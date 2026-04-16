@@ -13,81 +13,75 @@ export interface LevelNode {
   gameIds: string[];
 }
 
-// The winding path coordinates (waypoints) for the character to follow
+// The winding path coordinates (waypoints) following the "H" structure in the new map image
 export const PATH_WAYPOINTS: Vec2[] = [
-  { x: 10, y: 80 },  // Start
-  { x: 15, y: 70 },
-  { x: 25, y: 65 },
-  { x: 30, y: 75 },  // Level 1 Node
-  { x: 40, y: 80 },
-  { x: 50, y: 60 },
-  { x: 45, y: 40 },  // Level 2 Node
-  { x: 55, y: 30 },
-  { x: 70, y: 35 },
-  { x: 80, y: 20 },  // Level 3 Node
-  { x: 85, y: 40 },
-  { x: 75, y: 55 },
-  { x: 65, y: 65 },  // Level 4 Node
-  { x: 75, y: 80 },
-  { x: 90, y: 85 },
-  { x: 95, y: 70 },  // Level 5 Node
+  { x: 49.5, y: 95 },  // Bottom Start
+  { x: 49.5, y: 75.5 },// Lower Junction
+  { x: 21, y: 75.5 },  // Level 1: Broken House
+  { x: 78, y: 75.5 },  // Level 2: Normal House
+  { x: 49.5, y: 75.5 },// Back to Junction
+  { x: 49.5, y: 35 },  // Upper Junction
+  { x: 21, y: 35 },    // Level 3: Red House
+  { x: 78, y: 35 },    // Level 4: Yarn House
+  { x: 49.5, y: 35 },  // Back to Upper Junction
+  { x: 49.5, y: 22 },  // Level 5: Castle Entrance
 ];
 
 export const LEVEL_NODES: LevelNode[] = [
   {
-    id: 'storm-lab',
+    id: 'broken-house',
     index: 0,
-    x: 30, y: 75,
-    emotion: 'anxiety',
-    label: 'Storm Lab',
-    buildingEmoji: '⚡',
-    description: 'Reaction speed under pressure',
-    color: '#3b82f6',
-    gameIds: ['storm-reaction', 'risk-choice'],
-  },
-  {
-    id: 'grey-house',
-    index: 1,
-    x: 45, y: 40,
+    x: 21, y: 75.5,
     emotion: 'depression',
-    label: 'Grey House',
-    buildingEmoji: '🌫️',
-    description: 'Engagement and motivation',
+    label: 'Old Shack',
+    buildingEmoji: '🏠',
+    description: 'A sense of stagnation and decay',
     color: '#818cf8',
     gameIds: ['interest-explorer', 'persistence-test'],
   },
   {
-    id: 'energy-core',
+    id: 'normal-house',
+    index: 1,
+    x: 78, y: 75.5,
+    emotion: 'anxiety',
+    label: 'Settled Home',
+    buildingEmoji: '🏘️',
+    description: 'Comfort but underlying tension',
+    color: '#3b82f6',
+    gameIds: ['storm-reaction', 'risk-choice'],
+  },
+  {
+    id: 'red-house',
     index: 2,
-    x: 80, y: 20,
+    x: 21, y: 35,
+    emotion: 'overthinking',
+    label: 'Quill Library',
+    buildingEmoji: '📕',
+    description: 'Infinite loops of creative doubt',
+    color: '#a855f7',
+    gameIds: ['loop-decision', 'perfect-choice'],
+  },
+  {
+    id: 'yarn-house',
+    index: 3,
+    x: 78, y: 35,
     emotion: 'fatigue',
-    label: 'Energy Core',
-    buildingEmoji: '🔋',
-    description: 'Mental stamina over time',
+    label: 'Yarn Workshop',
+    buildingEmoji: '🧶',
+    description: 'A tangled web of exhaustion',
     color: '#06b6d4',
     gameIds: ['focus-drop', 'multitask-challenge'],
   },
   {
-    id: 'courthouse',
-    index: 3,
-    x: 65, y: 65,
+    id: 'castle',
+    index: 4,
+    x: 49.5, y: 22,
     emotion: 'paralysis',
-    label: 'Courthouse',
-    buildingEmoji: '⚖️',
-    description: 'Choice avoidance and delay',
+    label: 'Great Citadel',
+    buildingEmoji: '🏰',
+    description: 'The final barrier of indecision',
     color: '#fb923c',
     gameIds: ['timed-decisions', 'too-many-options'],
-  },
-  {
-    id: 'mind-library',
-    index: 4,
-    x: 95, y: 70,
-    emotion: 'overthinking',
-    label: 'Mind Library',
-    buildingEmoji: '🌀',
-    description: 'Decision loops and hesitation',
-    color: '#a855f7',
-    gameIds: ['loop-decision', 'perfect-choice'],
   },
 ];
 

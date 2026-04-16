@@ -10,6 +10,9 @@ export default class BootScene extends Scene {
     // Load hero atlas from template assets
     this.load.atlas('hero', 'assets/atlases/hero.png', 'assets/atlases/hero.json');
 
+    // World Map Assets
+    this.load.image('world_map_static', 'assets/world_map_static.png');
+
     // Virtual Gamepad
     this.load.image('a_button', 'assets/images/a_button.png');
     this.load.image('b_button', 'assets/images/b_button.png');
