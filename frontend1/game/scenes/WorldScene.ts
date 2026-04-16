@@ -189,13 +189,25 @@ export default class WorldScene extends Scene {
     const prevCompleted = isFirst || completedZones.size >= node.index;
     const isLocked      = !isFirst && !prevCompleted;
 
+    const levelNum = node.index + 1;
+
     if (this.promptText) {
       if (isLocked) {
-        this.showPrompt('🔒 LOCKED', '#ff6666');
-        useGameStore.getState().addText({ key: 'locked', value: '🔒 LOCKED', config: { color: '#ff4444' } });
+        const msg = `🔒 LOCKED: LEVEL ${levelNum}`;
+        this.showPrompt(msg, '#ff6666');
+        useGameStore.getState().addText({ 
+          key: 'locked', 
+          value: msg, 
+          config: { color: '#ff4444' } 
+        });
       } else {
-        this.showPrompt('PRESS E TO ENTER', '#ffffff');
-        useGameStore.getState().addText({ key: 'interact', value: 'PRESS E TO ENTER', config: { color: '#ffffff' } });
+        const msg = `ENTER LEVEL ${levelNum}`;
+        this.showPrompt(`PRESS E TO ${msg}`, '#ffffff');
+        useGameStore.getState().addText({ 
+          key: 'interact', 
+          value: msg, 
+          config: { color: '#ffffff', keycap: 'E' } 
+        });
       }
     }
 

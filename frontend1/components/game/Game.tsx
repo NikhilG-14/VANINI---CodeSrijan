@@ -83,7 +83,7 @@ function Game() {
                 default: 'arcade',
                 arcade: {
                     gravity: { x: 0, y: 0 },
-                    debug: IS_DEV,
+                    debug: false,
                 },
             },
             backgroundColor: '#000000',
