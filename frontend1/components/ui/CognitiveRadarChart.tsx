@@ -1,13 +1,13 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import type { EmotionInsight } from '@/lib/types';
+import type { CognitiveInsight } from '@/lib/types';
 
 interface Props {
-  insights: EmotionInsight[];
+  insights: CognitiveInsight[];
   size?: number;
 }
 
-export function EmotionRadarChart({ insights, size = 280 }: Props) {
+export function CognitiveRadarChart({ insights, size = 280 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function EmotionRadarChart({ insights, size = 280 }: Props) {
     });
 
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, 'rgba(124,58,237,0.5)');
+    grad.addColorStop(0, 'rgba(124,58,237,0.5)'); // Premium violet
     grad.addColorStop(1, 'rgba(124,58,237,0.05)');
 
     ctx.beginPath();

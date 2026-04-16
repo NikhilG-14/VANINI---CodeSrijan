@@ -1,4 +1,4 @@
-import type { EmotionScores, EmotionInsight } from './types';
+import type { CognitiveScores, CognitiveInsight } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 
@@ -6,8 +6,8 @@ const OLLAMA_BASE = process.env.NEXT_PUBLIC_OLLAMA_BASE ?? 'http://localhost:114
 const OLLAMA_MODEL = process.env.NEXT_PUBLIC_OLLAMA_MODEL ?? 'llama3.2';
 
 function buildSystemPrompt(
-  scores: EmotionScores, 
-  insights: EmotionInsight[],
+  scores: CognitiveScores, 
+  insights: CognitiveInsight[],
   history?: { recent_sessions: any[], recent_chat: any[] }
 ): string {
   const summaryLines = insights.map(i =>
@@ -58,8 +58,8 @@ type OllamaRequest = {
 
 export async function generateAvatarResponse(
   userMessage: string,
-  scores: EmotionScores,
-  insights: EmotionInsight[],
+  scores: CognitiveScores,
+  insights: CognitiveInsight[],
   history?: { recent_sessions: any[], recent_chat: any[] },
   onToken?: (chunk: string) => void
 ): Promise<string> {

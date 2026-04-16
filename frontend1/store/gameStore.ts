@@ -1,7 +1,7 @@
 'use client';
 import { create } from 'zustand';
-import type { Direction, EmotionKey, GameResult, ZoneDef, Vec2, EmotionScores } from '@/lib/types';
-import { PLAYER_START, getZoneAtTile, isWalkable } from '@/lib/cityMap';
+import type { Direction, GameResult, ZoneDef, Vec2, CognitiveScores } from '@/lib/types';
+import { PLAYER_START } from '@/lib/cityMap';
 import { saveResults } from '@/lib/gameSession';
 import type { GameAssignment } from '@/lib/types';
 import { buildZoneGame } from '@/lib/gameSession';
@@ -25,7 +25,7 @@ interface GameState {
   phase: GamePhase;
   activeGame: GameAssignment | null;
   results: GameResult[];
-  emotionScores: EmotionScores | null;
+  cognitiveScores: CognitiveScores | null;
 
   // ── Phaser UI Sync ────────────────────────
   gameZoom: number;
@@ -52,7 +52,7 @@ interface GameState {
   closeDialog: () => void;
   enterZone: (zoneId: string) => void;
   exitGame: (result: GameResult | null) => void;
-  setScores: (scores: EmotionScores) => void;
+  setScores: (scores: CognitiveScores) => void;
   resetWorld: () => void;
   moveToLevel: (index: number) => void;
   updateMapPos: (pos: Vec2) => void;
@@ -82,7 +82,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   phase: 'world',
   activeGame: null,
   results: [],
-  emotionScores: null,
+  cognitiveScores: null,
 
   // ── Phaser UI Initial state ───────────────
   gameZoom: 1,
@@ -111,7 +111,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     const { currentLevelIndex } = get();
     const node = LEVEL_NODES[currentLevelIndex];
     if (!node) return;
-    const game = buildZoneGame(node.emotion);
+    const game = buildZoneGame(node.cognitive);
     set({ phase: 'minigame', activeGame: game, activeZoneId: node.id, dialogOpen: false });
   },
 
@@ -122,7 +122,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     if (!result && activeGame) {
       // Create a "Partial/Quit" result
       finalResult = {
-        emotion: activeGame.emotion,
+        cognitive: activeGame.cognitive,
         gameId: activeGame.gameId,
         durationMs: 0,
         reactionTimeMs: [],
@@ -169,7 +169,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   moveToLevel: (index) => set({ currentLevelIndex: index, dialogOpen: false }),
 
-  setScores: (scores) => set({ emotionScores: scores }),
+  setScores: (scores) => set({ cognitiveScores: scores }),
 
   setGameZoom: (zoom) => set({ gameZoom: zoom }),
   setGameWidth: (width) => set({ gameWidth: width }),
@@ -200,7 +200,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     phase: 'world',
     activeGame: null,
     results: [],
-    emotionScores: null,
+    cognitiveScores: null,
     gameZoom: 1,
     dialogMessages: [],
     texts: [],

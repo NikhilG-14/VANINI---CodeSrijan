@@ -1,68 +1,38 @@
-import type { EmotionKey, GameAssignment, SessionConfig, GameTheme, GameResult } from './types';
+import type { CognitiveKey, GameAssignment, SessionConfig, GameTheme, GameResult } from './types';
 
 // ─── Game Pool ───────────────────────────────────────────────────────────────
-const GAME_OPTIONS: Record<EmotionKey, [GameAssignment, GameAssignment]> = {
-  anxiety: [
-    {
-      emotion: 'anxiety', gameId: 'storm-reaction', gameName: 'Storm Reaction', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-blue-950 to-slate-900', accent: '#60a5fa', label: 'Anxiety & Stress', emoji: '⚡', description: 'Catch lightning bolts before they hit the ground' },
-    },
-    {
-      emotion: 'anxiety', gameId: 'risk-choice', gameName: 'Risk Choice', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-amber-950 to-slate-900', accent: '#f59e0b', label: 'Anxiety & Stress', emoji: '🎲', description: 'Choose between safe paths and unknown outcomes' },
-    },
-  ],
-  depression: [
-    {
-      emotion: 'depression', gameId: 'interest-explorer', gameName: 'Interest Explorer', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-gray-900 to-slate-950', accent: '#818cf8', label: 'Depression & Sadness', emoji: '🌫️', description: 'Explore activities that spark your interest' },
-    },
-    {
-      emotion: 'depression', gameId: 'persistence-test', gameName: 'Persistence Test', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-gray-900 to-slate-950', accent: '#818cf8', label: 'Depression & Sadness', emoji: '🌑', description: 'Keep going for as long as you feel like it' },
-    },
-  ],
-  overthinking: [
-    {
-      emotion: 'overthinking', gameId: 'loop-decision', gameName: 'Loop Decision', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-purple-950 to-slate-900', accent: '#a855f7', label: 'Overthinking', emoji: '🌀', description: 'Answer life questions — change your mind as many times as you want' },
-    },
-    {
-      emotion: 'overthinking', gameId: 'perfect-choice', gameName: 'Perfect Choice', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-purple-950 to-slate-900', accent: '#a855f7', label: 'Overthinking', emoji: '🧩', description: 'Pick the option that feels most right to you' },
-    },
-  ],
-  paralysis: [
-    {
-      emotion: 'paralysis', gameId: 'timed-decisions', gameName: 'Timed Decisions', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-orange-950 to-slate-900', accent: '#fb923c', label: 'Decision Paralysis', emoji: '⚖️', description: 'Make quick yes or no calls before time runs out' },
-    },
-    {
-      emotion: 'paralysis', gameId: 'too-many-options', gameName: 'Too Many Options', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-orange-950 to-slate-900', accent: '#fb923c', label: 'Decision Paralysis', emoji: '🔀', description: 'Choose from many options — trust your instincts' },
-    },
-  ],
-  fatigue: [
-    {
-      emotion: 'fatigue', gameId: 'focus-drop', gameName: 'Focus Drop', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-cyan-950 to-slate-900', accent: '#06b6d4', label: 'Mental Fatigue', emoji: '🔋', description: 'Stay focused and tap the right target as it appears' },
-    },
-    {
-      emotion: 'fatigue', gameId: 'multitask-challenge', gameName: 'Multitask Challenge', durationMs: 90_000,
-      theme: { bg: 'from-slate-900 via-cyan-950 to-slate-900', accent: '#06b6d4', label: 'Mental Fatigue', emoji: '🔀', description: 'Handle two tasks at once — do your best!' },
-    },
-  ],
+const GAME_OPTIONS: Record<CognitiveKey, GameAssignment> = {
+  attention: {
+    cognitive: 'attention', gameId: 'stroop', gameName: 'Stroop Task', durationMs: 90_000,
+    theme: { bg: 'from-slate-900 via-blue-950 to-slate-900', accent: '#3b82f6', label: 'Selective Attention', emoji: '🎯', description: 'Select the color of the text, not the word it reads.' },
+  },
+  memory: {
+    cognitive: 'memory', gameId: 'n-back', gameName: 'N-Back Test', durationMs: 90_000,
+    theme: { bg: 'from-slate-900 via-violet-950 to-slate-900', accent: '#8b5cf6', label: 'Working Memory', emoji: '🧠', description: 'Tap when the current letter matches the one 2 steps ago.' },
+  },
+  impulsivity: {
+    cognitive: 'impulsivity', gameId: 'go-no-go', gameName: 'Go / No-Go', durationMs: 90_000,
+    theme: { bg: 'from-slate-900 via-red-950 to-slate-900', accent: '#ef4444', label: 'Impulsivity Control', emoji: '⚡', description: 'Tap for Green targets. Withhold tap for Red targets.' },
+  },
+  flexibility: {
+    cognitive: 'flexibility', gameId: 'wcst', gameName: 'Card Sort (WCST)', durationMs: 90_000,
+    theme: { bg: 'from-slate-900 via-emerald-950 to-slate-900', accent: '#10b981', label: 'Cognitive Flexibility', emoji: '🧩', description: 'Match cards to columns. The matching rule will change secretly.' },
+  },
+  risk_behavior: {
+    cognitive: 'risk_behavior', gameId: 'bart', gameName: 'Balloon Task', durationMs: 90_000,
+    theme: { bg: 'from-slate-900 via-amber-950 to-slate-900', accent: '#f59e0b', label: 'Risk Behavior', emoji: '🎈', description: 'Pump balloons for points. Stop before they pop to save them.' },
+  },
 };
 
 // ─── Session Builder ─────────────────────────────────────────────────────────
-export function buildZoneGame(emotion: EmotionKey): GameAssignment {
-  const opts = GAME_OPTIONS[emotion];
-  return opts[Math.floor(Math.random() * 2)];
+export function buildZoneGame(cognitive: CognitiveKey): GameAssignment {
+  return GAME_OPTIONS[cognitive];
 }
 
 export function buildSession(): SessionConfig {
-  const emotions: EmotionKey[] = ['anxiety', 'depression', 'overthinking', 'paralysis', 'fatigue'];
-  const games = emotions.map(e => buildZoneGame(e));
+  const cognitives: CognitiveKey[] = ['attention', 'memory', 'impulsivity', 'flexibility', 'risk_behavior'];
+  const games = cognitives.map(c => buildZoneGame(c));
+
   return {
     games,
     totalDurationMs: 10 * 60_000,

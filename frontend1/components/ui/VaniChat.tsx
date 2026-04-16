@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { generateAvatarResponse, saveChatMessage, getUserDossier } from '@/lib/ollamaClient';
-import type { EmotionScores, EmotionInsight } from '@/lib/types';
+import type { CognitiveScores, CognitiveInsight } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 
 interface Message {
@@ -10,8 +10,8 @@ interface Message {
 }
 
 interface Props {
-  scores: EmotionScores;
-  insights: EmotionInsight[];
+  scores: CognitiveScores;
+  insights: CognitiveInsight[];
 }
 
 export function VaniChat({ scores, insights }: Props) {

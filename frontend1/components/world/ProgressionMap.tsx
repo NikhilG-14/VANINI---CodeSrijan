@@ -131,7 +131,7 @@ export function ProgressionMap() {
               </p>
             </div>
             
-            {/* Emotional Hint (Visual Filter) */}
+            {/* Cognitive Hint (Visual Filter) */}
             {isCurrent && (
               <div 
                 className="fixed inset-0 pointer-events-none transition-opacity duration-1000 z-0"

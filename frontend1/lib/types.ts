@@ -1,6 +1,6 @@
 // ─────────── Core Primitives ───────────
 export type Direction = 'up' | 'down' | 'left' | 'right';
-export type EmotionKey = 'anxiety' | 'depression' | 'overthinking' | 'paralysis' | 'fatigue';
+export type CognitiveKey = 'attention' | 'memory' | 'impulsivity' | 'flexibility' | 'risk_behavior';
 
 export interface Vec2 { x: number; y: number; }
 
@@ -14,12 +14,12 @@ export interface ZoneDef {
   id: string;
   x: number; y: number;         // tile coords
   w: number; h: number;         // size in tiles
-  emotion: EmotionKey;
+  cognitive: CognitiveKey;
   label: string;
   emoji: string;
   color: string;
   description: string;
-  gameIds: [string, string];    // two possible games, one chosen at session time
+  gameId: string;               // Exact minigame mapped to this node
   completed: boolean;
 }
 
@@ -40,7 +40,7 @@ export interface GameTheme {
 }
 
 export interface GameAssignment {
-  emotion: EmotionKey;
+  cognitive: CognitiveKey;
   gameId: string;
   gameName: string;
   durationMs: number;
@@ -55,7 +55,7 @@ export interface SessionConfig {
 
 // ─────────── Telemetry / Results ───────────
 export interface GameResult {
-  emotion: EmotionKey;
+  cognitive: CognitiveKey;
   gameId: string;
   durationMs: number;
   reactionTimeMs: number[];
@@ -71,17 +71,17 @@ export interface GameResult {
   rawData?: Record<string, unknown>;
 }
 
-// ─────────── Emotion Scoring ───────────
-export interface EmotionScores {
-  anxiety: number;
-  depression: number;
-  overthinking: number;
-  paralysis: number;
-  fatigue: number;
+// ─────────── Cognitive Scoring ───────────
+export interface CognitiveScores {
+  attention: number;
+  memory: number;
+  impulsivity: number;
+  flexibility: number;
+  risk_behavior: number;
 }
 
-export interface EmotionInsight {
-  emotion: EmotionKey;
+export interface CognitiveInsight {
+  cognitive: CognitiveKey;
   score: number;
   label: string;
   color: string;

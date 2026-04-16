@@ -29,10 +29,10 @@ const getPixelPos = (pctX: number, pctY: number) => ({
 
 // Colors per emotion
 const EMOTION_COLORS: Record<string, number> = {
-  anxiety:      0x3b82f6,
-  depression:   0x818cf8,
-  fatigue:      0x06b6d4,
-  paralysis:    0xfb923c,
+  anxiety: 0x3b82f6,
+  depression: 0x818cf8,
+  fatigue: 0x06b6d4,
+  paralysis: 0xfb923c,
   overthinking: 0xa855f7,
 };
 
@@ -40,11 +40,11 @@ export default class WorldScene extends Scene {
   private hero!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
-    up:    Phaser.Input.Keyboard.Key;
-    down:  Phaser.Input.Keyboard.Key;
-    left:  Phaser.Input.Keyboard.Key;
+    up: Phaser.Input.Keyboard.Key;
+    down: Phaser.Input.Keyboard.Key;
+    left: Phaser.Input.Keyboard.Key;
     right: Phaser.Input.Keyboard.Key;
-    e:     Phaser.Input.Keyboard.Key;
+    e: Phaser.Input.Keyboard.Key;
   };
   private interactionZones: Map<Phaser.GameObjects.Zone, string> = new Map();
   private currentNearNodeId: string | null = null;
@@ -62,7 +62,7 @@ export default class WorldScene extends Scene {
 
     // ── Hero ────────────────────────────────────────────────
     const startNode = LEVEL_NODES[0];
-    const startPos  = getPixelPos(startNode.x, startNode.y);
+    const startPos = getPixelPos(startNode.x, startNode.y);
     this.hero = this.physics.add.sprite(startPos.x, startPos.y, HERO_SPRITE_NAME, 'walk_down_01');
     this.hero.setCollideWorldBounds(true);
     this.hero.setScale(2.0); // Larger hero for better visibility
@@ -72,7 +72,7 @@ export default class WorldScene extends Scene {
 
     // ── High-Clarity Camera View ──────────────────────────────
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
-    
+
     // Background Image
     this.add.image(0, 0, 'world_map_static').setOrigin(0).setDisplaySize(WORLD_W, WORLD_H).setDepth(-1);
 
@@ -85,11 +85,11 @@ export default class WorldScene extends Scene {
     // ── Controls ────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
-      up:    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      down:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      left:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      up: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      down: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      left: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
       right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      e:     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+      e: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E),
     };
 
     // ── Houses & zones ──────────────────────────────────────
@@ -98,8 +98,8 @@ export default class WorldScene extends Scene {
     // ── Prompt text (fixed HUD, scrollFactor 0) ─────────────
     this.promptText = this.add.text(0, 0, '', {
       fontFamily: '"Press Start 2P"',
-      fontSize:   '10px',           // was 8px – readable at 1.2× zoom
-      color:      '#ffffff',
+      fontSize: '10px',           // was 8px – readable at 1.2× zoom
+      color: '#ffffff',
       backgroundColor: '#00000099',
       padding: { x: 8, y: 5 },
     }).setDepth(50).setVisible(false).setScrollFactor(0);
@@ -126,7 +126,7 @@ export default class WorldScene extends Scene {
 
   private createHouses() {
     LEVEL_NODES.forEach((node, i) => {
-      const pos   = getPixelPos(node.x, node.y);
+      const pos = getPixelPos(node.x, node.y);
       const { completedZones } = useGameStore.getState();
       const isCompleted = completedZones.has(node.id);
 
@@ -142,11 +142,11 @@ export default class WorldScene extends Scene {
   }
 
   private drawMapLabel(x: number, y: number, label: string, color: string, unlocked: boolean) {
-     this.add.text(x, y + 45, label, {
+    this.add.text(x, y + 45, label, {
       fontFamily: '"Press Start 2P"',
-      fontSize:   '18px',           // Significantly larger base size for clarity at 0.5x zoom
-      color:      unlocked ? '#ffffff' : '#888888',
-      stroke:      '#000000',
+      fontSize: '18px',           // Significantly larger base size for clarity at 0.5x zoom
+      color: unlocked ? '#ffffff' : '#888888',
+      stroke: '#000000',
       strokeThickness: 3,
       resolution: 3,                // High resolution for sharp sub-pixel rendering
     }).setOrigin(0.5).setDepth(6);
@@ -158,8 +158,8 @@ export default class WorldScene extends Scene {
 
   private lighten(color: number, amount: number): number {
     const r = Math.min(255, ((color >> 16) & 0xff) + Math.round(255 * amount));
-    const g = Math.min(255, ((color >> 8)  & 0xff) + Math.round(255 * amount));
-    const b = Math.min(255, ( color        & 0xff)  + Math.round(255 * amount));
+    const g = Math.min(255, ((color >> 8) & 0xff) + Math.round(255 * amount));
+    const b = Math.min(255, (color & 0xff) + Math.round(255 * amount));
     return (r << 16) | (g << 8) | b;
   }
 
@@ -168,15 +168,15 @@ export default class WorldScene extends Scene {
     directions.forEach(dir => {
       if (!this.anims.exists(`walk_${dir}`)) {
         this.anims.create({
-          key:       `walk_${dir}`,
-          frames:    this.anims.generateFrameNames(HERO_SPRITE_NAME, {
-            prefix:  `walk_${dir}_`,
-            start:   1,
-            end:     3,
+          key: `walk_${dir}`,
+          frames: this.anims.generateFrameNames(HERO_SPRITE_NAME, {
+            prefix: `walk_${dir}_`,
+            start: 1,
+            end: 3,
             zeroPad: 2,
           }),
           frameRate: 10,
-          repeat:    -1,
+          repeat: -1,
         });
       }
     });
@@ -187,9 +187,9 @@ export default class WorldScene extends Scene {
     this.currentNearNodeId = node.id;
 
     const { completedZones } = useGameStore.getState();
-    const isFirst       = node.index === 0;
+    const isFirst = node.index === 0;
     const prevCompleted = isFirst || completedZones.size >= node.index;
-    const isLocked      = !isFirst && !prevCompleted;
+    const isLocked = !isFirst && !prevCompleted;
 
     const levelNum = node.index + 1;
 
@@ -197,18 +197,18 @@ export default class WorldScene extends Scene {
       if (isLocked) {
         const msg = `🔒 LOCKED: LEVEL ${levelNum}`;
         this.showPrompt(msg, '#ff6666');
-        useGameStore.getState().addText({ 
-          key: 'locked', 
-          value: msg, 
-          config: { color: '#ff4444' } 
+        useGameStore.getState().addText({
+          key: 'locked',
+          value: msg,
+          config: { color: '#ff4444' }
         });
       } else {
         const msg = `ENTER LEVEL ${levelNum}`;
         this.showPrompt(`PRESS E TO ${msg}`, '#ffffff');
-        useGameStore.getState().addText({ 
-          key: 'interact', 
-          value: msg, 
-          config: { color: '#ffffff', keycap: 'E' } 
+        useGameStore.getState().addText({
+          key: 'interact',
+          value: msg,
+          config: { color: '#ffffff', keycap: 'E' }
         });
       }
     }
@@ -220,7 +220,7 @@ export default class WorldScene extends Scene {
     if (!this.promptText) return;
     this.promptText.setText(msg).setColor(color).setVisible(true);
     this.promptText.setPosition(
-      this.scale.width  / 2 - this.promptText.width  / 2,
+      this.scale.width / 2 - this.promptText.width / 2,
       this.scale.height - 48,
     );
   }
@@ -235,7 +235,7 @@ export default class WorldScene extends Scene {
 
   update() {
     const speed = 220;   // was 180 – snappier on the smaller world
-    const body  = this.hero.body as Phaser.Physics.Arcade.Body;
+    const body = this.hero.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0);
 
     const { dialogOpen } = useGameStore.getState();
@@ -243,17 +243,17 @@ export default class WorldScene extends Scene {
 
     let dir = '';
 
-    if (this.cursors.left.isDown  || this.wasd.left.isDown)  { body.setVelocityX(-speed); dir = LEFT_DIRECTION; }
-    else if (this.cursors.right.isDown || this.wasd.right.isDown) { body.setVelocityX(speed);  dir = RIGHT_DIRECTION; }
+    if (this.cursors.left.isDown || this.wasd.left.isDown) { body.setVelocityX(-speed); dir = LEFT_DIRECTION; }
+    else if (this.cursors.right.isDown || this.wasd.right.isDown) { body.setVelocityX(speed); dir = RIGHT_DIRECTION; }
 
-    if (this.cursors.up.isDown    || this.wasd.up.isDown)    { body.setVelocityY(-speed); dir = dir || UP_DIRECTION; }
-    else if (this.cursors.down.isDown  || this.wasd.down.isDown)  { body.setVelocityY(speed);  dir = dir || DOWN_DIRECTION; }
+    if (this.cursors.up.isDown || this.wasd.up.isDown) { body.setVelocityY(-speed); dir = dir || UP_DIRECTION; }
+    else if (this.cursors.down.isDown || this.wasd.down.isDown) { body.setVelocityY(speed); dir = dir || DOWN_DIRECTION; }
 
     if (dir) {
       this.hero.anims.play(`walk_${dir}`, true);
       this.playStepSound();
     }
-    else     this.hero.anims.stop();
+    else this.hero.anims.stop();
 
     // E / Space interaction
     if (
@@ -262,7 +262,7 @@ export default class WorldScene extends Scene {
     ) {
       const { nearZone, completedZones } = useGameStore.getState();
       if (nearZone) {
-        const isFirst       = nearZone.index === 0;
+        const isFirst = nearZone.index === 0;
         const prevCompleted = isFirst || completedZones.size >= nearZone.index;
         if (prevCompleted) {
           this.playSuccessSound();
@@ -309,7 +309,7 @@ export default class WorldScene extends Scene {
       // Ultra-short, tiny 'tick' (like a very subtle hi-hat)
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      
+
       osc.type = 'square';
       osc.frequency.setValueAtTime(800, audioCtx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.02);
@@ -319,10 +319,10 @@ export default class WorldScene extends Scene {
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      
+
       osc.start();
       osc.stop(audioCtx.currentTime + 0.02);
-      
+
     } catch (e) {
       console.warn("Footstep sound failed:", e);
     }
@@ -340,7 +340,7 @@ export default class WorldScene extends Scene {
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      
+
       // Cheerful ascending "ding"
       osc.type = 'sine';
       osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
@@ -353,7 +353,7 @@ export default class WorldScene extends Scene {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.3);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   private playErrorSound() {
@@ -366,7 +366,7 @@ export default class WorldScene extends Scene {
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      
+
       // Harsh "buzz" sound
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(120, audioCtx.currentTime);
@@ -379,6 +379,6 @@ export default class WorldScene extends Scene {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.2);
-    } catch (e) {}
+    } catch (e) { }
   }
 }

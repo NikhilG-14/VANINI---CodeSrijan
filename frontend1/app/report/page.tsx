@@ -2,28 +2,28 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { EmotionRadarChart } from '@/components/ui/EmotionRadarChart';
+import { CognitiveRadarChart } from '@/components/ui/CognitiveRadarChart';
 import { AvatarMessage } from '@/components/ui/AvatarMessage';
 import { useGameStore } from '@/store/gameStore';
-import { calculateScores, getEmotionInsights, getAvatarMessage } from '@/lib/emotionScoring';
+import { calculateScores, getCognitiveInsights, getAvatarMessage } from '@/lib/cognitiveScoring';
 import { generateAvatarResponse, checkOllamaHealth, saveGameSession } from '@/lib/ollamaClient';
 import { loadResults } from '@/lib/gameSession';
-import type { EmotionInsight, EmotionScores } from '@/lib/types';
+import type { CognitiveInsight, CognitiveScores } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 import { VaniChat } from '@/components/ui/VaniChat';
 
 export default function ReportPage() {
   const router = useRouter();
   const results = useGameStore(s => s.results);
-  const scores = useGameStore(s => s.emotionScores);
+  const scores = useGameStore(s => s.cognitiveScores);
   const setScores = useGameStore(s => s.setScores);
   const resetWorld = useGameStore(s => s.resetWorld);
 
-  const [insights, setInsights] = useState<EmotionInsight[]>([]);
+  const [insights, setInsights] = useState<CognitiveInsight[]>([]);
   const [avatarMsg, setAvatarMsg] = useState('');
   const [ollamaOnline, setOllamaOnline] = useState(false);
   const [streaming, setStreaming] = useState(false);
-  const [computed, setComputed] = useState<EmotionScores | null>(null);
+  const [computed, setComputed] = useState<CognitiveScores | null>(null);
 
   useEffect(() => {
     let finalResults = results;
@@ -38,7 +38,7 @@ export default function ReportPage() {
     const sc = calculateScores(finalResults);
     setComputed(sc);
     setScores(sc);
-    setInsights(getEmotionInsights(sc));
+    setInsights(getCognitiveInsights(sc));
   }, [results, router, setScores]);
 
   // Persist session to backend
