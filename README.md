@@ -291,7 +291,7 @@ python -m venv .venv
 - Install the necessary dependencies from the requirements.txt file:
 
 ```
-pip install -r backend/requirements.txt
+pip install -r ai_backend/requirements.txt
 ```
 
 - Add the required keys in .env file
@@ -309,7 +309,7 @@ S3_BUCKET_NAME=
 - Run the FastAPI Server Locally
 
 ```
-fastapi dev backend/main.py
+fastapi dev ai_backend/main.py
 
 or
 

@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path=env_path)
 
-from backend.utils.embedding import generate_text_embedding
-from backend.logger import CustomFormatter
+from ai_backend.utils.embedding import generate_text_embedding
+from ai_backend.logger import CustomFormatter
 
 # PostgreSQL Connection String
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_8l6CSWboPhGt@ep-silent-butterfly-am1tj9uq-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
@@ -91,6 +91,17 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # Create chat_history table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id TEXT,
+                role TEXT, -- 'user' or 'assistant'
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         logger.info("Database schema initialized successfully")
 
 def insert_data_into_db(
@@ -146,9 +157,51 @@ def insert_game_session(user_id, results, scores):
         logger.error(f"Error inserting game session: {e}")
         return None
 
-def upload_embeddings_to_mongo(file_contents):
+def insert_chat_message(user_id, role, content):
     """
-    Upload embeddings to PostgreSQL (legacy name preserved).
+    Inserts a chat message into the 'chat_history' table.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO chat_history (user_id, role, content)
+                VALUES (%s, %s, %s)
+                RETURNING id;
+            """, (user_id, role, content))
+            message_id = cur.fetchone()[0]
+            logger.info(f"Inserted chat message with ID: {message_id}")
+            return str(message_id)
+    except Exception as e:
+        logger.error(f"Error inserting chat message: {e}")
+        return None
+
+def get_chat_history(user_id, limit=20):
+    """
+    Retrieves the chat history for a specific user.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT role, content, created_at 
+                FROM chat_history 
+                WHERE user_id = %s 
+                ORDER BY created_at ASC 
+                LIMIT %s;
+            """, (user_id, limit))
+            return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error retrieving chat history: {e}")
+        return []
+
+def upload_document_embeddings(file_contents):
+    """
+    Upload embeddings to PostgreSQL.
     """
     conn = get_db_connection()
     if not conn:
@@ -162,7 +215,7 @@ def upload_embeddings_to_mongo(file_contents):
                     INSERT INTO document_embeddings (filename, content, embedding)
                     VALUES (%s, %s, %s);
                 """, (filename, content[:500], embedding))
-                logger.info(f"Uploaded {filename} to PostgreSQL.")
+                logger.info(f"Uploaded {filename} embeddings to PostgreSQL.")
     except Exception as e:
         logger.error(f"Error uploading embeddings to PG: {e}")
 

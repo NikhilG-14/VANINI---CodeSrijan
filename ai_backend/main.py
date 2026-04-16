@@ -13,22 +13,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.db import get_db_connection, upload_embeddings_to_mongo
-from backend.logger import CustomFormatter
-from backend.schema import FileContent, PostInfo
-from backend.utils.common import (load_image_from_url_or_file,
+from ai_backend.db import get_db_connection, upload_document_embeddings
+from psycopg2.extras import RealDictCursor
+from ai_backend.logger import CustomFormatter
+from ai_backend.schema import FileContent, PostInfo
+from ai_backend.utils.common import (load_image_from_url_or_file,
                                   read_files_from_directory,
                                   serialize_db_data)
-from backend.utils.embedding import find_top_matches, generate_text_embedding
-from backend.utils.regex_ptr import extract_info
-from backend.utils.steganography import (decode_text_from_image,
+from ai_backend.utils.embedding import find_top_matches, generate_text_embedding
+from ai_backend.utils.regex_ptr import extract_info
+from ai_backend.utils.steganography import (decode_text_from_image,
                                          encode_text_in_image)
-from backend.utils.text_llm import (create_poem, decompose_user_text,
+from ai_backend.utils.text_llm import (create_poem, decompose_user_text,
                                     expand_user_text_using_gemini,
                                     expand_user_text_using_gemma,
                                     expand_user_text_with_priority,
                                     text_to_image)
-from backend.utils.twitter import send_message_to_twitter
+from ai_backend.utils.twitter import send_message_to_twitter
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,7 +44,7 @@ db = None
 app = FastAPI()
 
 # Ensure uploads directory exists
-UPLOAD_DIR = "backend/uploads"
+UPLOAD_DIR = "ai_backend/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Mount static files to serve images locally
@@ -119,7 +120,7 @@ async def decompose_text_content(data: dict):
 async def save_extracted_data(data: dict):
     try:
         # data format from decomposition: {'name', 'location', 'contact_info', 'severity', 'culprit', 'relationship_to_culprit', 'other_info'}
-        from backend.db import insert_data_into_db
+        from ai_backend.db import insert_data_into_db
         result_id = insert_data_into_db(
             data.get("name"),
             data.get("location"),
@@ -253,10 +254,10 @@ async def close_issue(issue_id: str):
 
 @app.post("/upload_embeddings/")
 async def upload_embeddings():
-    """Upload embeddings to MongoDB."""
+    """Upload document embeddings to the database."""
     try:
-        file_contents = read_files_from_directory("backend/docs")
-        upload_embeddings_to_mongo(file_contents)
+        file_contents = read_files_from_directory("ai_backend/docs")
+        upload_document_embeddings(file_contents)
         return {"message": "Embeddings uploaded successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading embeddings: {e}")
@@ -296,7 +297,7 @@ async def generate_image(data: dict):
 async def save_session_endpoint(data: dict):
     """Save a game session result."""
     try:
-        from backend.db import insert_game_session
+        from ai_backend.db import insert_game_session
         user_id = data.get("user_id")
         results = data.get("results")
         scores = data.get("scores")
@@ -321,3 +322,66 @@ async def get_sessions_endpoint(user_id: str):
         return JSONResponse(content=serialize_db_data(sessions))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving sessions: {e}")
+
+@app.post("/chat/save")
+async def save_chat_message_endpoint(data: dict):
+    """Save a chat message to history."""
+    try:
+        from ai_backend.db import insert_chat_message
+        user_id = data.get("user_id")
+        role = data.get("role")
+        content = data.get("content")
+        msg_id = insert_chat_message(user_id, role, content)
+        if msg_id:
+            return {"status": "success", "message_id": msg_id}
+        else:
+            raise Exception("Failed to save chat message")
+    except Exception as e:
+        logger.error(f"Error in save_chat_message_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/chat/history/{user_id}")
+async def get_chat_history_endpoint(user_id: str):
+    """Retrieve chat history for a user."""
+    try:
+        from ai_backend.db import get_chat_history
+        history = get_chat_history(user_id)
+        return JSONResponse(content=serialize_db_data(history))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving chat history: {e}")
+
+@app.get("/user/dossier/{user_id}")
+async def get_user_dossier_endpoint(user_id: str):
+    """Retrieve aggregate data (sessions + chat) for AI context."""
+    try:
+        from ai_backend.db import get_db_connection
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # Get last 5 sessions with raw results to find behavioral flags
+            cur.execute("SELECT scores, results, created_at FROM game_sessions WHERE user_id = %s ORDER BY created_at DESC LIMIT 5;", (user_id,))
+            sessions = cur.fetchall()
+            
+            # Map sessions to a cleaner "behavioral snapshot"
+            behavioral_history = []
+            for s in sessions:
+                # Find if user quit early in any game in that session
+                results = s.get("results", [])
+                quits = [r["gameId"] for r in results if r.get("quitEarly")]
+                
+                behavioral_history.append({
+                    "scores": s["scores"],
+                    "quits": quits,
+                    "date": str(s["created_at"])
+                })
+
+            # Get last 10 chat messages
+            cur.execute("SELECT role, content FROM chat_history WHERE user_id = %s ORDER BY created_at DESC LIMIT 10;", (user_id,))
+            chats = cur.fetchall()
+            
+        return JSONResponse(content=serialize_db_data({
+            "recent_sessions": behavioral_history,
+            "recent_chat": chats[::-1]
+        }))
+    except Exception as e:
+        logger.error(f"Error in get_user_dossier_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving dossier: {e}")

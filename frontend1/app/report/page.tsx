@@ -6,9 +6,11 @@ import { EmotionRadarChart } from '@/components/ui/EmotionRadarChart';
 import { AvatarMessage } from '@/components/ui/AvatarMessage';
 import { useGameStore } from '@/store/gameStore';
 import { calculateScores, getEmotionInsights, getAvatarMessage } from '@/lib/emotionScoring';
-import { generateAvatarResponse, checkOllamaHealth } from '@/lib/ollamaClient';
+import { generateAvatarResponse, checkOllamaHealth, saveGameSession } from '@/lib/ollamaClient';
 import { loadResults } from '@/lib/gameSession';
 import type { EmotionInsight, EmotionScores } from '@/lib/types';
+import { useUserStore } from '@/store/userStore';
+import { VaniChat } from '@/components/ui/VaniChat';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -38,6 +40,13 @@ export default function ReportPage() {
     setScores(sc);
     setInsights(getEmotionInsights(sc));
   }, [results, router, setScores]);
+
+  // Persist session to backend
+  useEffect(() => {
+    if (!computed || !results.length) return;
+    const vimid = useUserStore.getState().ensureVimid();
+    saveGameSession(vimid, results, computed);
+  }, [computed, results]);
 
   useEffect(() => {
     if (!computed) return;
@@ -160,6 +169,18 @@ export default function ReportPage() {
                emoji={dominant?.emoji ?? '🧠'}
              />
           </div>
+        </div>
+
+        {/* Detailed Dialogue with VANI */}
+        <div className="flex flex-col gap-8">
+           <div className="text-center">
+             <h2 className="text-3xl font-black text-white tracking-tight mb-2">Consult with <span className="text-violet-400">VANI</span></h2>
+             <p className="text-white/40 text-sm max-w-lg mx-auto">
+               VANI has access to your full behavioral dossier and past sessions. Discuss your results or ask for specific mindfulness techniques.
+             </p>
+           </div>
+           
+           <VaniChat scores={computed} insights={insights} />
         </div>
 
         {/* Action Grid */}

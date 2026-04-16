@@ -4,7 +4,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from groq import Groq
 
-from backend.prompts import (INSPIRATION_POEM_PROMPT,
+from ai_backend.prompts import (INSPIRATION_POEM_PROMPT,
                              USER_POST_TEXT_DECOMPOSITION_PROMPT,
                              USER_POST_TEXT_EXPANSION_PROMPT)
 

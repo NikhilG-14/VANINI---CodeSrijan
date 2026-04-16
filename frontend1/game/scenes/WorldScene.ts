@@ -49,6 +49,8 @@ export default class WorldScene extends Scene {
   private interactionZones: Map<Phaser.GameObjects.Zone, string> = new Map();
   private currentNearNodeId: string | null = null;
   private promptText: Phaser.GameObjects.Text | null = null;
+  private lastStepTime: number = 0;
+  private isLeftFoot: boolean = true;
 
   constructor() {
     super('WorldScene');
@@ -247,7 +249,10 @@ export default class WorldScene extends Scene {
     if (this.cursors.up.isDown    || this.wasd.up.isDown)    { body.setVelocityY(-speed); dir = dir || UP_DIRECTION; }
     else if (this.cursors.down.isDown  || this.wasd.down.isDown)  { body.setVelocityY(speed);  dir = dir || DOWN_DIRECTION; }
 
-    if (dir) this.hero.anims.play(`walk_${dir}`, true);
+    if (dir) {
+      this.hero.anims.play(`walk_${dir}`, true);
+      this.playStepSound();
+    }
     else     this.hero.anims.stop();
 
     // E / Space interaction
@@ -259,7 +264,12 @@ export default class WorldScene extends Scene {
       if (nearZone) {
         const isFirst       = nearZone.index === 0;
         const prevCompleted = isFirst || completedZones.size >= nearZone.index;
-        if (prevCompleted) useGameStore.getState().enterZone(nearZone.id);
+        if (prevCompleted) {
+          this.playSuccessSound();
+          useGameStore.getState().enterZone(nearZone.id);
+        } else {
+          this.playErrorSound();
+        }
       }
     }
 
@@ -283,5 +293,92 @@ export default class WorldScene extends Scene {
         useGameStore.getState().removeText('interact');
       }
     }
+  }
+
+  private playStepSound() {
+    if (this.time.now - this.lastStepTime < 300) return;
+    this.lastStepTime = this.time.now;
+
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!(window as any)._stepAudioCtx) (window as any)._stepAudioCtx = new AudioContextClass();
+      const audioCtx = (window as any)._stepAudioCtx as AudioContext;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      // Ultra-short, tiny 'tick' (like a very subtle hi-hat)
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.02);
+
+      gain.gain.setValueAtTime(0.02, audioCtx.currentTime); // Very quiet
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02); // 20ms long
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.02);
+      
+    } catch (e) {
+      console.warn("Footstep sound failed:", e);
+    }
+  }
+
+
+
+  private playSuccessSound() {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!(window as any)._stepAudioCtx) (window as any)._stepAudioCtx = new AudioContextClass();
+      const audioCtx = (window as any)._stepAudioCtx as AudioContext;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      // Cheerful ascending "ding"
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {}
+  }
+
+  private playErrorSound() {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      if (!(window as any)._stepAudioCtx) (window as any)._stepAudioCtx = new AudioContextClass();
+      const audioCtx = (window as any)._stepAudioCtx as AudioContext;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      // Harsh "buzz" sound
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(90, audioCtx.currentTime + 0.15);
+
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    } catch (e) {}
   }
 }

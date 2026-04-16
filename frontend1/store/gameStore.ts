@@ -116,18 +116,38 @@ export const useGameStore = create<GameState>()((set, get) => ({
   },
 
   exitGame: (result) => {
-    const { results, completedZones, activeZoneId } = get();
-    if (!result) {
-      // Quit without result
+    const { results, completedZones, activeZoneId, activeGame } = get();
+    
+    let finalResult = result;
+    if (!result && activeGame) {
+      // Create a "Partial/Quit" result
+      finalResult = {
+        emotion: activeGame.emotion,
+        gameId: activeGame.gameId,
+        durationMs: 0,
+        reactionTimeMs: [],
+        errorCount: 0,
+        totalActions: 0,
+        hesitationMs: 0,
+        engagementScore: 0,
+        decisionChanges: 0,
+        quitEarly: true,
+        performanceDrop: 0,
+        clickTimestamps: [],
+        panicClickCount: 0,
+      };
+    }
+
+    if (!finalResult) {
       set({ phase: 'world', activeGame: null, activeZoneId: null });
       return;
     }
 
-    const newResults = [...results, result];
+    const newResults = [...results, finalResult];
     const newCompleted = new Set(completedZones);
     if (activeZoneId) newCompleted.add(activeZoneId);
 
-    const nextLevel = newCompleted.size; // Simple linear progression index
+    const nextLevel = newCompleted.size;
     const isComplete = newCompleted.size >= 5;
     
     if (isComplete) {
@@ -140,7 +160,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
       phase: isComplete ? 'complete' : 'world',
       activeGame: null,
       activeZoneId: null,
-      currentLevelIndex: Math.min(nextLevel, 4), // Move forward
+      currentLevelIndex: Math.min(nextLevel, 4),
       dialogOpen: false, 
     });
   },
