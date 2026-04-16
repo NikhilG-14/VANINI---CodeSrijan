@@ -130,7 +130,7 @@ export default function PerfectChoiceGame({ durationMs, onComplete }: Props) {
 
       <div className="flex items-center justify-between w-full">
         <span className="text-purple-400 text-xs font-semibold">
-          Round {Math.min(round + 1, ROUNDS.length)}/{ROUNDS.length} · {changes} edits · {(currentRoundMs / 1000).toFixed0}s window
+          Round {Math.min(round + 1, ROUNDS.length)}/{ROUNDS.length} · {changes} edits · {(currentRoundMs / 1000).toFixed(1)}s window
         </span>
         <GameTimer durationMs={durationMs} onExpire={finish} accent="#a855f7" label="Perfect" />
       </div>

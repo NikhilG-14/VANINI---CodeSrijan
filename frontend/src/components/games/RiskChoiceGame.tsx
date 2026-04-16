@@ -14,6 +14,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const SCENARIOS = shuffle(RISK_SCENARIOS).slice(0, 8);
+const ROUND_MS = 8000;
 
 export default function RiskChoiceGame({ durationMs, onComplete }: Props) {
   const [round, setRound] = useState(0);
@@ -113,13 +114,16 @@ export default function RiskChoiceGame({ durationMs, onComplete }: Props) {
   }, [chosen, round, finish]);
 
   const scenario = SCENARIOS[Math.min(round, SCENARIOS.length - 1)];
-  const pct = timeLeft / ROUND_MS;
+  const currentRoundMs = Math.max(3000, 8000 - round * 700);
+  const pct = timeLeft / currentRoundMs;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between py-4 px-4"
       style={{ background: 'linear-gradient(180deg, #0f172a 0%, #431407 60%, #0f172a 100%)' }}>
       <div className="flex items-center justify-between w-full">
-        <span className="text-amber-400 text-sm font-semibold">Round {Math.min(round + 1, SCENARIOS.length)}/{SCENARIOS.length}</span>
+        <span className="text-purple-400 text-xs font-semibold">
+          Round {Math.min(round + 1, SCENARIOS.length)}/{SCENARIOS.length} · {(currentRoundMs / 1000).toFixed(1)}s window
+        </span>
         <GameTimer durationMs={durationMs} onExpire={finish} accent="#f59e0b" label="Risk" />
       </div>
 
