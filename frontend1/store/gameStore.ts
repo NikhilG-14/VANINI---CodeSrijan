@@ -27,10 +27,27 @@ interface GameState {
   results: GameResult[];
   emotionScores: EmotionScores | null;
 
+  // ── Phaser UI Sync ────────────────────────
+  gameZoom: number;
+  gameWidth: number;
+  gameHeight: number;
+  gameCanvasElement: HTMLCanvasElement | null;
+  
+  // ── Dialog ─────────────────────────────────
+  dialogMessages: string[];
+  dialogCharacterName: string | null;
+  dialogAction: (() => void) | null;
+  
+  // ── Menu ───────────────────────────────────
+  menuItems: any[]; // Define items as needed
+  
+  // ── Floating Text ──────────────────────────
+  texts: any[];
+
   // ── Actions ────────────────────────────────
   movePlayer: (dir: Direction) => void;
   setMoving: (v: boolean) => void;
-  setNearZone: (zone: ZoneDef | null) => void;
+  setNearZone: (zone: LevelNode | null) => void;
   openDialog: () => void;
   closeDialog: () => void;
   enterZone: (zoneId: string) => void;
@@ -39,6 +56,16 @@ interface GameState {
   resetWorld: () => void;
   moveToLevel: (index: number) => void;
   updateMapPos: (pos: Vec2) => void;
+  
+  // ── Phaser Actions ─────────────────────────
+  setGameZoom: (zoom: number) => void;
+  setGameWidth: (width: number) => void;
+  setGameHeight: (height: number) => void;
+  setGameCanvasElement: (canvas: HTMLCanvasElement) => void;
+  setDialogData: (messages: string[], name?: string, action?: () => void) => void;
+  setMenuItems: (items: any[]) => void;
+  addText: (text: any) => void;
+  removeText: (key: string) => void;
 }
 
 export const useGameStore = create<GameState>()((set, get) => ({
@@ -51,11 +78,22 @@ export const useGameStore = create<GameState>()((set, get) => ({
   activeZoneId: null,
   completedZones: new Set(),
   currentLevelIndex: 0,
-  playerMapPos: { x: 10, y: 80 }, // Start of path
+  playerMapPos: { x: 200, y: 700 }, // Actual pixel start position in the world
   phase: 'world',
   activeGame: null,
   results: [],
   emotionScores: null,
+
+  // ── Phaser UI Initial state ───────────────
+  gameZoom: 1,
+  gameWidth: 800,
+  gameHeight: 600,
+  gameCanvasElement: null,
+  dialogMessages: [],
+  dialogCharacterName: null,
+  dialogAction: null,
+  menuItems: [],
+  texts: [],
 
   // ── Player Movement ───────────────────────
   movePlayer: (dir) => {
@@ -65,7 +103,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   setMoving: (v) => set({ moving: v }),
   setNearZone: (zone) => set({ nearZone: zone }),
   openDialog: () => set({ dialogOpen: true }),
-  closeDialog: () => set({ dialogOpen: false, nearZone: null }),
+  closeDialog: () => set({ dialogOpen: false, nearZone: null, dialogMessages: [] }),
 
   // ── Zone / Game ──────────────────────────
   enterZone: (zoneId) => {
@@ -113,6 +151,20 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
   setScores: (scores) => set({ emotionScores: scores }),
 
+  setGameZoom: (zoom) => set({ gameZoom: zoom }),
+  setGameWidth: (width) => set({ gameWidth: width }),
+  setGameHeight: (height) => set({ gameHeight: height }),
+  setGameCanvasElement: (canvas) => set({ gameCanvasElement: canvas }),
+  setDialogData: (messages, name, action) => set({ 
+    dialogMessages: messages, 
+    dialogCharacterName: name || null, 
+    dialogAction: action || null,
+    dialogOpen: messages.length > 0
+  }),
+  setMenuItems: (items) => set({ menuItems: items }),
+  addText: (text) => set((state) => ({ texts: [...state.texts, text] })),
+  removeText: (key) => set((state) => ({ texts: state.texts.filter(t => t.key !== key) })),
+
   resetWorld: () => set({
     pos: PLAYER_START,
     direction: 'down',
@@ -127,5 +179,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
     activeGame: null,
     results: [],
     emotionScores: null,
+    gameZoom: 1,
+    dialogMessages: [],
+    texts: [],
   }),
 }));

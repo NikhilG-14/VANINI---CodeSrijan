@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ProgressionMap } from '@/components/world/ProgressionMap';
-import { WorldPlayer } from '@/components/world/WorldPlayer';
+import dynamic from 'next/dynamic';
 import { MiniGamePortal } from '@/components/ui/MiniGamePortal';
 import { useGameStore } from '@/store/gameStore';
 import { LEVEL_NODES } from '@/lib/progression';
+
+// Load Game ONLY on client (Phaser uses window/document)
+const Game = dynamic(() => import('@/components/game/Game'), { ssr: false });
 
 const EMOTION_COLORS: Record<string, string> = {
   anxiety: '#3b82f6', depression: '#818cf8', fatigue: '#06b6d4',
@@ -85,56 +87,13 @@ export default function WorldPage() {
       </div>
 
       {/* === Main area === */}
-      <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-[#060a14]">
-        {/* The new map and animated player */}
-        <ProgressionMap />
-        <WorldPlayer />
-
-        {/* Interaction Dialog */}
-        {dialogOpen && nearZone && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px] transition-all animate-in fade-in duration-500">
-            <div className="w-full max-w-sm mx-4 transform animate-in slide-in-from-bottom-8 duration-500">
-              <div 
-                className="rounded-[2.5rem] border p-8 backdrop-blur-3xl overflow-hidden relative shadow-2xl"
-                style={{ 
-                  background: `linear-gradient(135deg, ${nearZone.color}22, #0d1424ef)`,
-                  borderColor: `${nearZone.color}44`,
-                  boxShadow: `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 50px ${nearZone.color}22`
-                }}
-              >
-                {/* Decorative background emoji */}
-                <div className="absolute -top-4 -right-4 text-9xl opacity-10 rotate-12">{nearZone.emoji}</div>
-                
-                <div className="relative z-10">
-                  <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center text-4xl mb-6 shadow-xl"
-                    style={{ background: `${nearZone.color}44`, border: `1px solid ${nearZone.color}66` }}>
-                    <span className="npc-bounce">{nearZone.emoji}</span>
-                  </div>
-                  
-                  <h3 className="text-white font-black text-2xl mb-1 tracking-tight">{nearZone.label}</h3>
-                  <p className="text-white/50 text-sm leading-relaxed mb-8">{nearZone.description}. Ready to begin the analysis?</p>
-
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => enterZone(nearZone.id)}
-                      className="flex-1 py-4 rounded-2xl font-black text-sm text-white transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg"
-                      style={{ background: nearZone.color, boxShadow: `0 8px 20px -6px ${nearZone.color}88` }}
-                    >
-                      {completedZones.has(nearZone.id) ? 'RE-ANALYZE' : 'BEGIN TEST'}
-                    </button>
-                    <button
-                      onClick={closeDialog}
-                      className="px-6 py-4 rounded-2xl font-bold text-sm text-white/40 bg-white/5 border border-white/10 hover:bg-white/10 transition-all hover:text-white/60"
-                    >
-                      SKIP
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="text-center mt-6">
-                <span className="text-white/20 text-[10px] uppercase font-bold tracking-[0.3em]">Press Enter to Confirm</span>
-              </div>
-            </div>
+      <div className="flex-1 relative overflow-hidden bg-black">
+        {phase === 'world' ? (
+          <Game />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            {/* Loading or transitioning state */}
+            <span className="font-pixel text-[10px] text-white/20 animate-pulse">TRANSMITTING...</span>
           </div>
         )}
 

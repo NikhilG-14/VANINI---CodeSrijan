@@ -1,0 +1,75 @@
+.buttonsWrapper {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 120;
+    pointer-events: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+.button {
+    pointer-events: all;
+    background-color: transparent;
+    border: none;
+    image-rendering: pixelated;
+    transition: transform 0.05s;
+    user-select: none;
+    cursor: pointer;
+
+    &.is-touched {
+        transform: scale(0.9);
+        filter: brightness(0.8);
+    }
+}
+
+.dPadWrapper {
+    position: absolute;
+    bottom: 5%;
+    left: 5%;
+    width: calc(var(--game-zoom) * 80px);
+    height: calc(var(--game-zoom) * 80px);
+}
+
+.dPadButton {
+    position: absolute;
+    width: 33%;
+    height: 33%;
+}
+
+.dPadLeft {
+    top: 33%;
+    left: 0;
+    transform: rotate(0deg);
+}
+
+.dPadUp {
+    top: 0;
+    left: 33%;
+    transform: rotate(90deg);
+}
+
+.dPadRight {
+    top: 33%;
+    right: 0;
+    transform: rotate(180deg);
+}
+
+.dPadDown {
+    bottom: 0;
+    left: 33%;
+    transform: rotate(270deg);
+}
+
+.actionButtonsWrapper {
+    position: absolute;
+    bottom: 5%;
+    right: 5%;
+    display: flex;
+    gap: calc(var(--game-zoom) * 10px);
+}
+
+.aButton, .bButton {
+    width: calc(var(--game-zoom) * 40px);
+    height: calc(var(--game-zoom) * 40px);
+}

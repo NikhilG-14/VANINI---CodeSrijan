@@ -1,0 +1,39 @@
+.dialogWindow {
+    image-rendering: pixelated;
+    font-family: 'Press Start 2P', serif;
+    text-transform: uppercase;
+    background-color: #e2b27e;
+    border: calc(var(--game-zoom) * 3px) solid #79584f;
+    position: absolute;
+    bottom: 5%;
+    width: 90%;
+    left: 50%;
+    transform: translate(-50%, 0%);
+    padding: calc(var(--game-zoom) * 10px);
+    min-height: calc((var(--game-height) / 4) * var(--game-zoom) * 1px);
+    max-height: calc((var(--game-height) / 3) * var(--game-zoom) * 1px);
+    box-shadow: 0 10px 0 #00000044;
+    z-index: 100;
+}
+
+.dialogTitle {
+    font-weight: bold;
+    font-size: calc(var(--game-zoom) * 8px);
+    margin-bottom: calc(var(--game-zoom) * 8px);
+    color: #5a4033;
+}
+
+.dialogFooter {
+    cursor: pointer;
+    text-align: end;
+    position: absolute;
+    right: calc(var(--game-zoom) * 10px);
+    bottom: calc(var(--game-zoom) * 10px);
+    font-size: calc(var(--game-zoom) * 8px);
+    color: #79584f;
+    font-weight: bold;
+    
+    &:hover {
+        color: #111;
+    }
+}

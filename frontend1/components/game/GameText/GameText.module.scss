@@ -1,0 +1,11 @@
+.gameText {
+    font-family: 'Press Start 2P', serif;
+    font-size: calc(var(--game-zoom) * 8px);
+    text-transform: uppercase;
+    position: absolute;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 90;
+}
