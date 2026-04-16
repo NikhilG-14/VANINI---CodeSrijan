@@ -48,7 +48,7 @@ export default function ImageGen({
   });
 
   const [imageOptions, setImageOptions] = useState<string[] | null>(null); // To hold the array of image URLs
-  const [selectedImage, setSelectedImage] = useState<string | null>(null); // To store the selected image
+  // const [selectedImage, setSelectedImage] = useState<string | null>(null); // To store the selected image
   const [isLoading, setIsLoading] = useState<boolean>(false); // Loading state for images
   const [selectedText, setSelectedText] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>(''); // Default model

@@ -80,6 +80,17 @@ def init_db():
                 embedding vector(768)
             );
         """)
+
+        # Create game_sessions table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS game_sessions (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id TEXT,
+                results JSONB,
+                scores JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         logger.info("Database schema initialized successfully")
 
 def insert_data_into_db(
@@ -112,6 +123,27 @@ def insert_data_into_db(
             return str(report_id)
     except Exception as e:
         logger.error(f"Error inserting data into PG: {e}")
+        return None
+
+def insert_game_session(user_id, results, scores):
+    """
+    Inserts a game session into the 'game_sessions' table.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO game_sessions (user_id, results, scores)
+                VALUES (%s, %s, %s)
+                RETURNING id;
+            """, (user_id, json.dumps(results), json.dumps(scores)))
+            session_id = cur.fetchone()[0]
+            logger.info(f"Inserted game session with ID: {session_id}")
+            return str(session_id)
+    except Exception as e:
+        logger.error(f"Error inserting game session: {e}")
         return None
 
 def upload_embeddings_to_mongo(file_contents):

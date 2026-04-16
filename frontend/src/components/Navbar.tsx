@@ -58,6 +58,16 @@ function Navbar() {
           </Link>
         )}
         <Link
+          href="/games"
+          className={`${
+            isActive('/games')
+              ? 'text-blue-700 font-semibold'
+              : 'hover:text-blue-700'
+          } transition-colors duration-200`}
+        >
+          Mind Journey
+        </Link>
+        <Link
           href="/lawbot"
           className={`${
             isActive('/lawbot')

@@ -3,21 +3,22 @@ from io import BytesIO
 import uuid
 import json
 import requests
+import datetime
 from fastapi import FastAPI, File, HTTPException
 from PIL import Image
 
 
 # Utility functions
 def serialize_db_data(data):
-    """Recursively convert UUIDs and specific types to string for JSON serialization."""
+    """Recursively convert UUIDs, datetimes and specific types to string for JSON serialization."""
     if isinstance(data, list):
         return [serialize_db_data(item) for item in data]
     if isinstance(data, dict):
         return {
-            k: serialize_db_data(v) if isinstance(v, (dict, list, uuid.UUID)) else v
+            k: serialize_db_data(v) if isinstance(v, (dict, list, uuid.UUID, datetime.datetime)) else v
             for k, v in data.items()
         }
-    if isinstance(data, uuid.UUID):
+    if isinstance(data, uuid.UUID) or isinstance(data, datetime.datetime):
         return str(data)
     return data
 

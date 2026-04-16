@@ -290,4 +290,34 @@ async def generate_image(data: dict):
         return {"image_urls": [local_access_url]}
     except Exception as e:
         logger.error("Error generating image: %s", e)
-        raise HTTPException(status_code=500, detail=f"Error generating image: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating image: {e}")
+
+@app.post("/save-session")
+async def save_session_endpoint(data: dict):
+    """Save a game session result."""
+    try:
+        from backend.db import insert_game_session
+        user_id = data.get("user_id")
+        results = data.get("results")
+        scores = data.get("scores")
+        session_id = insert_game_session(user_id, results, scores)
+        if session_id:
+            return {"status": "success", "session_id": session_id}
+        else:
+            raise Exception("Failed to save session")
+    except Exception as e:
+        logger.error(f"Error in save_session_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/get-sessions/{user_id}")
+async def get_sessions_endpoint(user_id: str):
+    """Retrieve all game sessions for a user."""
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM game_sessions WHERE user_id = %s ORDER BY created_at DESC;", (user_id,))
+            columns = [desc[0] for desc in cur.description]
+            sessions = [dict(zip(columns, row)) for row in cur.fetchall()]
+        return JSONResponse(content=serialize_db_data(sessions))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving sessions: {e}")
