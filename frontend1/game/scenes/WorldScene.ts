@@ -63,24 +63,22 @@ export default class WorldScene extends Scene {
     const startPos  = getPixelPos(startNode.x, startNode.y);
     this.hero = this.physics.add.sprite(startPos.x, startPos.y, HERO_SPRITE_NAME, 'walk_down_01');
     this.hero.setCollideWorldBounds(true);
-    this.hero.setScale(1.5);
+    this.hero.setScale(2.0); // Larger hero for better visibility
     this.hero.setDepth(10);
 
     this.createAnims();
 
-    // ── Static Image Map View ──────────────────────────────
+    // ── High-Clarity Camera View ──────────────────────────────
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     
     // Background Image
     this.add.image(0, 0, 'world_map_static').setOrigin(0).setDisplaySize(WORLD_W, WORLD_H).setDepth(-1);
 
-    // Center camera and fit to viewport
+    // Camera following character with high zoom for clarity
     const cam = this.cameras.main;
-    const zoomX = this.scale.width / WORLD_W;
-    const zoomY = this.scale.height / WORLD_H;
-    const fitZoom = Math.min(zoomX, zoomY);
-    cam.setZoom(fitZoom);
-    cam.centerOn(WORLD_W / 2, WORLD_H / 2);
+    cam.setBounds(0, 0, WORLD_W, WORLD_H);
+    cam.startFollow(this.hero, true, 0.08, 0.08); // Follow character
+    cam.setZoom(0.5); // Tweak: 1.0 provides native resolution clarity and a slightly wider view
 
     // ── Controls ────────────────────────────────────────────
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -142,12 +140,13 @@ export default class WorldScene extends Scene {
   }
 
   private drawMapLabel(x: number, y: number, label: string, color: string, unlocked: boolean) {
-     this.add.text(x, y + 26, label, {
+     this.add.text(x, y + 45, label, {
       fontFamily: '"Press Start 2P"',
-      fontSize:   '7px',
+      fontSize:   '18px',           // Significantly larger base size for clarity at 0.5x zoom
       color:      unlocked ? '#ffffff' : '#888888',
       stroke:      '#000000',
-      strokeThickness: 2,
+      strokeThickness: 3,
+      resolution: 3,                // High resolution for sharp sub-pixel rendering
     }).setOrigin(0.5).setDepth(6);
   }
 
@@ -272,7 +271,5 @@ export default class WorldScene extends Scene {
         useGameStore.getState().removeText('interact');
       }
     }
-
-    useGameStore.getState().updateMapPos({ x: this.hero.x, y: this.hero.y });
   }
 }

@@ -162,7 +162,9 @@ export const useGameStore = create<GameState>()((set, get) => ({
     dialogOpen: messages.length > 0
   }),
   setMenuItems: (items) => set({ menuItems: items }),
-  addText: (text) => set((state) => ({ texts: [...state.texts, text] })),
+  addText: (text) => set((state) => ({ 
+    texts: [...state.texts.filter(t => t.key !== text.key), text] 
+  })),
   removeText: (key) => set((state) => ({ texts: state.texts.filter(t => t.key !== key) })),
 
   resetWorld: () => set({
