@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db" // Change to postgresql in production via env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(uuid())
+  username        String         @unique
+  avatarUrl       String?
+  emotionProfile  EmotionProfile?
+  sessions        GameSession[]
+  posts           CommunityPost[]
+  comments        CommunityComment[]
+  createdAt       DateTime       @default(now())
+}
+
+model EmotionProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  anxietyScore     Int      @default(0)
+  depressionScore  Int      @default(0)
+  overthinkingScore Int     @default(0)
+  fatigueScore     Int      @default(0)
+  decisionParalysis Int     @default(0)
+  lastUpdated      DateTime @updatedAt
+}
+
+model GameSession {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  gameMode        String   
+  metrics         String   // JSON string of metrics
+  scoreDelta      String   // JSON string of deltas
+  completedAt     DateTime @default(now())
+}
+
+// === COMMUNITY SUPPORT ===
+model CommunityPost {
+  id              String   @id @default(uuid())
+  authorId        String
+  author          User     @relation(fields: [authorId], references: [id])
+  title           String
+  content         String
+  tags            String   // Comma separated tags
+  comments        CommunityComment[]
+  createdAt       DateTime @default(now())
+}
+
+model CommunityComment {
+  id              String   @id @default(uuid())
+  postId          String
+  post            CommunityPost @relation(fields: [postId], references: [id])
+  authorId        String
+  author          User     @relation(fields: [authorId], references: [id])
+  content         String
+  createdAt       DateTime @default(now())
+}

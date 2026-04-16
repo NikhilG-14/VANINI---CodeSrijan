@@ -3,6 +3,7 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import type { GameResult } from '@/lib/gameSession';
 import { computePanicClicks } from '@/lib/gameSession';
 import { GameTimer } from './GameTimer';
+import { RetroModal } from '../world/RetroModal';
 
 interface Props { durationMs: number; onComplete: (r: GameResult) => void; }
 
@@ -118,54 +119,58 @@ export default function RiskChoiceGame({ durationMs, onComplete }: Props) {
   const pct = timeLeft / currentRoundMs;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-between py-4 px-4"
-      style={{ background: 'linear-gradient(180deg, #0f172a 0%, #431407 60%, #0f172a 100%)' }}>
-      <div className="flex items-center justify-between w-full">
-        <span className="text-purple-400 text-xs font-semibold">
-          Round {Math.min(round + 1, SCENARIOS.length)}/{SCENARIOS.length} · {(currentRoundMs / 1000).toFixed(1)}s window
-        </span>
-        <GameTimer durationMs={durationMs} onExpire={finish} accent="#f59e0b" label="Risk" />
-      </div>
+    <RetroModal title="WILD ENCOUNTER" onClose={() => finish()}>
+      <div className="w-full h-full flex flex-col items-center justify-between pb-4">
+        
+        {/* Status Bar */}
+        <div className="flex items-center justify-between w-full mb-6 bg-white border-[4px] border-black p-3 shadowed-box">
+          <span className="text-black text-[10px]">
+            Rnd {Math.min(round + 1, SCENARIOS.length)}/{SCENARIOS.length}
+          </span>
+          <span className="text-red-600 text-[10px]">
+            TIME: {(currentRoundMs / 1000).toFixed(1)}s
+          </span>
+        </div>
 
-      {/* Round timer bar */}
-      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{
-            width: `${pct * 100}%`,
-            background: pct > 0.5 ? '#f59e0b' : pct > 0.25 ? '#ef4444' : '#7f1d1d',
-            transition: 'width 0.08s linear',
-          }}
-        />
-      </div>
+        {/* Round timer bar (Retro Style HP Bar) */}
+        <div className="w-full h-4 bg-gray-300 border-2 border-black mb-8 relative">
+          <div className="absolute top-0 left-0 bottom-0 text-[10px] pl-1 z-10 font-bold leading-3">HP</div>
+          <div
+            className="h-full border-r-2 border-black transition-all"
+            style={{
+              width: `${pct * 100}%`,
+              background: pct > 0.5 ? '#4ade80' : pct > 0.25 ? '#fbbf24' : '#ef4444',
+              transition: 'width 0.08s linear',
+            }}
+          />
+        </div>
 
-      {/* Question card */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full max-w-md">
-        <p className="text-white text-xl font-semibold text-center leading-relaxed px-2">
-          🎲 {scenario.q}
-        </p>
-
-        {result ? (
-          <div className="text-white text-lg font-bold animate-bounce">{result}</div>
-        ) : (
-          <div className="flex gap-4 w-full">
-            <button
-              onClick={() => choose('safe')}
-              className="flex-1 py-4 rounded-2xl font-bold text-sm border border-emerald-500/40 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-800/40 transition-all active:scale-95"
-            >
-              🛡️ {scenario.safe}
-            </button>
-            <button
-              onClick={() => choose('risk')}
-              className="flex-1 py-4 rounded-2xl font-bold text-sm border border-amber-500/40 text-amber-400 bg-amber-900/20 hover:bg-amber-800/40 transition-all active:scale-95"
-            >
-              🎲 {scenario.risk}
-            </button>
+        {/* Dialogue Box */}
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full mt-4">
+          <div className="bg-white border-[4px] border-black p-4 w-full min-h-[100px] flex items-center shadow-[4px_4px_0_0_#000]">
+            <p className="text-black text-sm leading-8">
+              {result ? <span className="animate-pulse">{result}</span> : `* ${scenario.q}`}
+            </p>
           </div>
-        )}
-      </div>
 
-      <p className="text-white/30 text-xs">Choose before time runs out</p>
-    </div>
+          {!result && (
+            <div className="flex flex-col gap-3 w-full mt-4">
+              <button
+                onClick={() => choose('safe')}
+                className="w-full text-left bg-white border-[4px] border-black p-4 hover:bg-gray-200 active:bg-gray-300 transition-colors shadow-[4px_4px_0_0_#000]"
+              >
+                <span className="text-sm">▶ {scenario.safe}</span>
+              </button>
+              <button
+                onClick={() => choose('risk')}
+                className="w-full text-left bg-white border-[4px] border-black p-4 hover:bg-gray-200 active:bg-gray-300 transition-colors shadow-[4px_4px_0_0_#000]"
+              >
+                <span className="text-sm">▶ {scenario.risk} </span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </RetroModal>
   );
 }
