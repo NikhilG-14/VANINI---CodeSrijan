@@ -4,32 +4,47 @@ import dotenv from 'dotenv';
 import voice from 'elevenlabs-node';
 import express from 'express';
 import { promises as fs } from 'fs';
-import OpenAI from 'openai';
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import fetch from "node-fetch";
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '-',
-});
-
 const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
 const voiceID = 'cgSgspJ2msm6clMCkdW9';
-// Path to Rhubarb Lip Sync binary (optional)
-// If not set, lip sync will gracefully fall back to empty lipsync data
 const rhubarbPath = process.env.RHUBARB_PATH || '';
+const googleApiKey = process.env.GOOGLE_API_KEY;
+
+const useOllama = process.env.USE_OLLAMA === 'true';
+const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+const ollamaModel = process.env.OLLAMA_MODEL || 'llama3';
 
 const app = express();
 app.use(express.json());
 app.use(cors());
-const port = 3001; // Changed from 3000 to avoid conflict with main frontend
+const port = 3001;
+
+// Ensure audios directory exists
+const audiosDir = 'audios';
+fs.mkdir(audiosDir, { recursive: true }).catch(console.error);
+
+const SYSTEM_PROMPT = `You are a virtual therapy bot designed to provide emotional support and advice to women. Your goal is to listen empathetically and offer thoughtful, comforting advice. 
+IMPORTANT: Respond ONLY with a JSON array of messages (max 3). Do not include any other text.
+Each message object must include:
+- text: The message you are sending to the user.
+- facialExpression: Choose from: [smile, sad, angry, surprised, funnyFace, crazy, default].
+- animation: Choose ONLY from: [Idle, Talking_1, Talking_2, Crying, Laughing, Angry].
+
+Example Format:
+[
+  {
+    "text": "I'm here for you. How are you feeling?",
+    "facialExpression": "smile",
+    "animation": "Talking_1"
+  }
+]`;
 
 app.get('/', (req, res) => {
   res.send('Haven AI Avatar Backend is running!');
-});
-
-app.get('/voices', async (req, res) => {
-  res.send(await voice.getVoices(elevenLabsApiKey));
 });
 
 const execCommand = (command) => {
@@ -46,17 +61,9 @@ const lipSyncMessage = async (message) => {
     console.log('Rhubarb not configured. Skipping lip sync generation.');
     return;
   }
-  const time = new Date().getTime();
-  console.log(`Starting conversion for message ${message}`);
   try {
-    await execCommand(
-      `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
-    );
-    console.log(`Conversion done in ${new Date().getTime() - time}ms`);
-    await execCommand(
-      `"${rhubarbPath}" -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
-    );
-    console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
+    await execCommand(`ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`);
+    await execCommand(`"${rhubarbPath}" -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`);
   } catch (e) {
     console.warn(`Lip sync failed for message ${message}:`, e.message);
   }
@@ -67,7 +74,6 @@ const readJsonTranscript = async (file) => {
     const data = await fs.readFile(file, 'utf8');
     return JSON.parse(data);
   } catch (e) {
-    // Return empty lipsync if file doesn't exist (when Rhubarb is not configured)
     return { mouthCues: [] };
   }
 };
@@ -77,7 +83,56 @@ const audioFileToBase64 = async (file) => {
   return data.toString('base64');
 };
 
+async function callOllama(message) {
+  try {
+    const response = await fetch(`${ollamaUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: ollamaModel,
+        system: SYSTEM_PROMPT,
+        prompt: message,
+        stream: false,
+        format: 'json'
+      })
+    });
+    if (!response.ok) throw new Error('Ollama connection failed');
+    const data = await response.json();
+    console.log('--- Ollama Response Received ---');
+    return JSON.parse(data.response);
+  } catch (error) {
+    console.error('Ollama Error:', error.message);
+    return null;
+  }
+}
+
+async function callGemini(message) {
+  if (!googleApiKey) throw new Error('Google API Key not configured');
+  try {
+    const genAI = new GoogleGenerativeAI(googleApiKey);
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        systemInstruction: SYSTEM_PROMPT
+    });
+    const result = await model.generateContent(message);
+    const text = result.response.text();
+    console.log('--- Gemini Response Received ---');
+    const cleanJson = text
+      .replace(/^```json\s*/, '')
+      .replace(/```$/, '')
+      .trim();
+    return JSON.parse(cleanJson);
+  } catch (error) {
+    console.error('Gemini Error:', error.message);
+    throw error;
+  }
+}
+
 app.post('/chat', async (req, res) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).send({ error: 'Invalid JSON body' });
+  }
+
   const userMessage = req.body.message;
   if (!userMessage) {
     res.send({
@@ -88,102 +143,96 @@ app.post('/chat', async (req, res) => {
           lipsync: await readJsonTranscript('audios/intro_0.json'),
           facialExpression: 'smile',
           animation: 'Talking_1',
-        },
-        {
-          text: "I missed you so much... Please don't go for so long!",
-          audio: await audioFileToBase64('audios/intro_1.wav'),
-          lipsync: await readJsonTranscript('audios/intro_1.json'),
-          facialExpression: 'sad',
-          animation: 'Crying',
-        },
+        }
       ],
     });
     return;
   }
-  if (!elevenLabsApiKey || openai.apiKey === '-') {
+
+  if (!elevenLabsApiKey) {
     res.send({
-      messages: [
-        {
-          text: "Please my dear, don't forget to add your API keys!",
-          audio: await audioFileToBase64('audios/api_0.wav'),
-          lipsync: await readJsonTranscript('audios/api_0.json'),
-          facialExpression: 'angry',
-          animation: 'Angry',
-        },
-        {
-          text: "You don't want to ruin Haven with a crazy ElevenLabs bill, right?",
-          audio: await audioFileToBase64('audios/api_1.wav'),
-          lipsync: await readJsonTranscript('audios/api_1.json'),
-          facialExpression: 'smile',
-          animation: 'Laughing',
-        },
-      ],
+      messages: [{
+        text: "Please add your ElevenLabs API key to start talking!",
+        audio: await audioFileToBase64('audios/api_0.wav'),
+        lipsync: await readJsonTranscript('audios/api_0.json'),
+        facialExpression: 'concerned',
+        animation: 'Talking_0',
+      }],
     });
     return;
   }
 
-  const project = 'tantrotsav-410809';
-  const location = 'us-central1';
-  const textModel = 'gemini-1.5-flash';
-  const vertexAI = new VertexAI({ project: project, location: location });
+  let messages = null;
 
-  const generativeModelPreview = vertexAI.preview.getGenerativeModel({
-    model: textModel,
-    systemInstruction: {
-      'role': 'system',
-      'parts': [
-        {
-          'text':
-            'You are a virtual therapy bot designed to provide emotional support and advice to women. Your goal is to listen empathetically and offer thoughtful, comforting advice. Respond with a JSON array of messages (max 3). Each message should include the following properties:\n- text: The message you are sending to the user.\n- facialExpression: The emotional tone of your message (e.g., smile, sad, calm, concerned, supportive).\n- animation: The animation corresponding to the emotional tone (e.g., Talking_0, Talking_1, Talking_2, Idle, Supportive, Relaxed).',
-        },
-      ],
-    },
-  });
-  const request = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: userMessage || 'Hello' }],
-      },
-    ],
-  };
+  // Try Ollama first (Local focus)
+  if (useOllama) {
+    console.log('Attempting to use Ollama (Llama 3)...');
+    messages = await callOllama(userMessage);
+  }
 
-  const result = await generativeModelPreview.generateContent(request);
-  console.log('Full response: ', JSON.stringify(result));
+  // Fallback to Gemini if Ollama failed or is disabled
+  if (!messages) {
+    console.log('Ollama failed or disabled. Falling back to Gemini...');
+    try {
+      messages = await callGemini(userMessage);
+    } catch (e) {
+      console.error('Both Ollama and Gemini failed:', e.message);
+      res.status(500).send({ error: 'All AI models failed' });
+      return;
+    }
+  }
 
-  const candidate = result?.response?.candidates?.[0];
-  const parts = candidate?.content?.parts;
+  // Normalize messages to an array
+  if (messages && !Array.isArray(messages)) {
+    if (messages.messages && Array.isArray(messages.messages)) {
+      messages = messages.messages;
+    } else if (messages.text) {
+      messages = [messages];
+    }
+  }
 
-  if (!parts || !parts[0]?.text) {
-    console.error('Expected content parts not found in the response.');
-    res.status(500).send({ error: 'Unexpected response structure from Google Gemini API.' });
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    console.error('Invalid or empty AI response format:', messages);
+    res.status(500).send({ error: 'Invalid or empty AI response format' });
     return;
   }
 
-  let messages;
-  try {
-    const jsonResponse = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
-    const cleanJsonString = jsonResponse
-      .replace(/^```json\s*\n/, '')
-      .replace(/\n```$/, '');
-    messages = JSON.parse(cleanJsonString);
-    console.log('Parsed JSON response:', messages);
-  } catch (error) {
-    console.error('Failed to parse JSON response:', error);
-    res.status(500).send({ error: 'Error parsing response from Google Gemini API.' });
-    return;
-  }
+  // Support both array formats
+  if (messages.messages) messages = messages.messages;
 
-  if (messages.messages) {
-    messages = messages.messages;
-  }
+  const validAnimations = ['Idle', 'Talking_1', 'Talking_2', 'Crying', 'Laughing', 'Angry'];
+
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
+    
+    // Ensure animation is valid to prevent frontend crash
+    if (!validAnimations.includes(message.animation)) {
+      message.animation = 'Idle';
+    }
+
     const fileName = `audios/message_${i}.mp3`;
-    const textInput = message.text;
-    await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, textInput);
+    try {
+        console.log(`Generating audio for message ${i}: "${message.text.substring(0, 30)}..."`);
+        await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, message.text);
+        console.log(`--- ElevenLabs Success for message ${i} ---`);
+    } catch (e) {
+        console.error(`--- ElevenLabs Error for message ${i} ---:`, e.message);
+        // Fallback to empty audio or handle accordingly
+    }
+    
     await lipSyncMessage(i);
-    message.audio = await audioFileToBase64(fileName);
+    
+    try {
+        const stats = await fs.stat(fileName);
+        if (stats.size > 0) {
+            message.audio = await audioFileToBase64(fileName);
+        } else {
+            console.error(`Audio file ${fileName} is empty`);
+        }
+    } catch (e) {
+        console.error(`Audio file ${fileName} not found or inaccessible`);
+    }
+
     message.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
   }
 
