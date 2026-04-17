@@ -85,6 +85,15 @@ export const LEVEL_NODES: LevelNode[] = [
 ];
 
 
+// Path segments mapping completion count to sequence of waypoint indices
+export const PATH_SEGMENTS: Record<number, number[]> = {
+  0: [0, 1, 2],       // Start -> Lower Junction -> Level 0
+  1: [2, 1, 3],       // Level 0 -> Lower Junction -> Level 1
+  2: [3, 1, 5, 6],    // Level 1 -> Lower Junc -> Upper Junc -> Level 2
+  3: [6, 5, 7],       // Level 2 -> Upper Junction -> Level 3
+  4: [7, 8, 9],       // Level 3 -> Upper Junction -> Level 4
+};
+
 // Nature elements to scatter
 export interface SceneryItem {
   id: string;

@@ -13,7 +13,7 @@ import {
 } from '../../lib/gameConstants';
 
 // Level data
-import { LEVEL_NODES, PATH_WAYPOINTS, type LevelNode } from '../../lib/progression';
+import { LEVEL_NODES, PATH_WAYPOINTS, PATH_SEGMENTS, type LevelNode } from '../../lib/progression';
 
 // ── World layout constants ───────────────────────────────────────
 // Reduced from 5000×4000 → tight enough so nodes feel close but
@@ -27,13 +27,13 @@ const getPixelPos = (pctX: number, pctY: number) => ({
   y: (pctY / 100) * WORLD_H,
 });
 
-// Colors per emotion
+// Colors per cognitive category
 const EMOTION_COLORS: Record<string, number> = {
-  anxiety: 0x3b82f6,
-  depression: 0x818cf8,
-  fatigue: 0x06b6d4,
-  paralysis: 0xfb923c,
-  overthinking: 0xa855f7,
+  attention: 0x3b82f6,
+  memory: 0x8b5cf6,
+  impulsivity: 0xef4444,
+  flexibility: 0x10b981,
+  risk_behavior: 0xf59e0b,
 };
 
 export default class WorldScene extends Scene {
@@ -51,6 +51,9 @@ export default class WorldScene extends Scene {
   private promptText: Phaser.GameObjects.Text | null = null;
   private lastStepTime: number = 0;
   private isLeftFoot: boolean = true;
+  private breadcrumbGroup!: Phaser.GameObjects.Group;
+  private currentPathCount: number = -1;
+
 
   constructor() {
     super('WorldScene');
@@ -109,6 +112,8 @@ export default class WorldScene extends Scene {
 
     // ── Interaction Prompts ─────────────────────────────
     // Marker logic or other world-level UI can go here
+    this.breadcrumbGroup = this.add.group();
+    this.drawBreadcrumbPath();
   }
 
   private drawWorld() {
@@ -234,6 +239,12 @@ export default class WorldScene extends Scene {
   }
 
   update() {
+    // ── Navigation Breadcrumbs ────────────────────────────
+    const { completedZones: currentZones } = useGameStore.getState();
+    if (this.currentPathCount !== currentZones.size) {
+      this.drawBreadcrumbPath();
+    }
+
     const speed = 220;   // was 180 – snappier on the smaller world
     const body = this.hero.body as Phaser.Physics.Arcade.Body;
     body.setVelocity(0);
@@ -381,4 +392,54 @@ export default class WorldScene extends Scene {
       osc.stop(audioCtx.currentTime + 0.2);
     } catch (e) { }
   }
-}
+
+  private drawBreadcrumbPath() {
+    this.breadcrumbGroup.clear(true, true);
+    
+    const { completedZones } = useGameStore.getState();
+    const count = completedZones.size;
+    const segmentIndices = PATH_SEGMENTS[count];
+
+    if (!segmentIndices || segmentIndices.length < 2) return;
+
+    this.currentPathCount = count;
+
+    // Use the next level's color for the breadcrumbs
+    const nextLevel = LEVEL_NODES[Math.min(count, LEVEL_NODES.length - 1)];
+    const colorHex = nextLevel.color || '#ffffff';
+    // Handle hex parsing correctly for Phaser
+    const color = parseInt(colorHex.replace('#', '0x'), 16);
+
+    // Create breadcrumb dots along the path segments
+    for (let i = 0; i < segmentIndices.length - 1; i++) {
+      const p1 = getPixelPos(PATH_WAYPOINTS[segmentIndices[i]].x, PATH_WAYPOINTS[segmentIndices[i]].y);
+      const p2 = getPixelPos(PATH_WAYPOINTS[segmentIndices[i + 1]].x, PATH_WAYPOINTS[segmentIndices[i + 1]].y);
+
+      const distance = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+      const density = 25; // Pixels between breadcrumbs
+      const steps = Math.floor(distance / density);
+
+      for (let s = 1; s <= steps; s++) {
+        const t = s / steps;
+        const x = Phaser.Math.Linear(p1.x, p2.x, t);
+        const y = Phaser.Math.Linear(p1.y, p2.y, t);
+
+        const dot = this.add.circle(x, y, 4, color, 0.6);
+        dot.setDepth(5);
+        this.breadcrumbGroup.add(dot);
+
+        // Individual pulse animation for each breadcrumb
+        this.tweens.add({
+          targets: dot,
+          scale: { from: 0.8, to: 1.2 },
+          alpha: { from: 0.3, to: 0.8 },
+          duration: 1200 + Math.random() * 800,
+          repeat: -1,
+          yoyo: true,
+          ease: 'Sine.easeInOut',
+          delay: Math.random() * 2000
+        });
+      }
+    }
+  }
+}
