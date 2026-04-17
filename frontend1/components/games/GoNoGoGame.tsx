@@ -264,7 +264,7 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
-      className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative"
+      className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative"
       onClick={handleTap}
     >
       {/* Header */}
@@ -282,7 +282,7 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
           )}
           <button
             onClick={e => { e.stopPropagation(); onExit(); }}
-            className="p-3 bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors"
+            className="px-14 py-3 min-w-[150px] flex items-center justify-center bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors"
           >
             Exit
           </button>

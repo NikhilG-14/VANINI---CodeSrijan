@@ -121,7 +121,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   const stimulusDuration = Math.max(800, 2000 - (correct.current * 50));
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">
+    <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">
       {/* Header */}
       <div className="flex items-center justify-between p-6 bg-black/20 border-b border-white/5">
         <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
         </div>
         <div className="flex items-center gap-4">
           {phase === 'playing' && <GameTimer durationMs={assignment.durationMs} timeLeftMs={timeLeft} />}
-          <button onClick={onExit} className="p-3 bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors">
+          <button onClick={onExit} className="px-14 py-3 min-w-[150px] flex items-center justify-center bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors">
             Exit
           </button>
         </div>

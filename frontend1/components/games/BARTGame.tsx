@@ -131,7 +131,7 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">
+    <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">
       <div className="flex items-center justify-between p-6 bg-black/20 border-b border-white/5 relative z-10">
         <div className="flex items-center gap-3">
           <span className="text-3xl">{assignment.theme.emoji}</span>
@@ -145,7 +145,7 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
             Score: {totalScore}
           </div>
           {phase === 'playing' && <GameTimer durationMs={assignment.durationMs} timeLeftMs={timeLeft} />}
-          <button onClick={e => { e.stopPropagation(); onExit(); }} className="p-3 bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors">
+          <button onClick={e => { e.stopPropagation(); onExit(); }} className="px-14 py-3 min-w-[150px] flex items-center justify-center bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors">
             Exit
           </button>
         </div>

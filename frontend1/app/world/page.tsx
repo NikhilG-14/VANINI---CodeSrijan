@@ -46,7 +46,7 @@ export default function WorldPage() {
   return (
     <div className="w-full h-full flex flex-col bg-[#060a14] selection:bg-violet-500/30">
       {/* === TOP FLOATING HUD === */}
-      <header className="fixed top-6 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] max-w-5xl z-50 flex items-center justify-between px-5 py-3 rounded-2xl glass-panel scanline overflow-hidden ring-1 ring-inset ring-white/10 shadow-2xl">
+      <header className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[1440px] z-50 flex items-center justify-between px-6 py-4 rounded-lg glass-panel scanline overflow-hidden ring-1 ring-inset ring-white/10 shadow-2xl">
         <div className="flex items-center gap-5">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">

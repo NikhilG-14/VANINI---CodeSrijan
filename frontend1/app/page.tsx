@@ -49,7 +49,7 @@ export default function TitlePage() {
 
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center gap-8 pt-24 px-6">
-        <div className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border border-violet-500/30 text-violet-400 bg-violet-500/10 backdrop-blur-sm">
+        <div className="px-5 py-2 rounded-full text-sm font-bold uppercase tracking-[0.2em] border border-violet-500/30 text-violet-400 bg-violet-500/10 backdrop-blur-sm">
           Behavioral Analysis System · VANI
         </div>
 
@@ -78,7 +78,7 @@ export default function TitlePage() {
 
         <div className="flex gap-4 mt-6">
           <Link href="/world"
-            className="group relative px-10 py-5 rounded-2xl bg-violet-600 font-bold text-white text-lg shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:shadow-[0_0_50px_rgba(124,58,237,0.8)] hover:bg-violet-500 transition-all active:scale-95 overflow-hidden"
+            className="group relative px-20 py-5 min-w-[320px] flex items-center justify-center rounded-2xl bg-violet-600 font-bold text-white text-lg shadow-[0_0_30px_rgba(124,58,237,0.5)] hover:shadow-[0_0_50px_rgba(124,58,237,0.8)] hover:bg-violet-500 transition-all active:scale-95 overflow-hidden"
           >
             <span className="relative z-10 font-extrabold tracking-widest">START EXPLORATION</span>
             <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
