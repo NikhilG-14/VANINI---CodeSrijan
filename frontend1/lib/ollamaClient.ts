@@ -224,9 +224,72 @@ export async function generateAvatarResponse(
       const data = await res.json();
       return data.response ?? '';
     }
+    return null as unknown as string;
   } catch (err) {
     console.warn('[VANI] Ollama network failure or unavailable:', err);
     return null as unknown as string;
+  }
+}
+
+export async function generateGameDiagnostic(
+  insight: CognitiveInsight,
+  metrics: any,
+  onToken?: (chunk: string) => void
+): Promise<string> {
+  const diagnosticPrompt = `Analyze the cognitive domain: ${insight.label}.
+Telemetry: ${JSON.stringify(metrics)}
+
+FORMATTING RULES (STRICT):
+1. Output ONLY 5 bullet points. No introductory text, no "Lead Neuroscientist" talk, no "Diagnostic Output:" header.
+2. Use this Markdown format: "- **STATEMENT X**: [The Observation] _[The Reasoning]_"
+3. Use bold (**text**) for the statement header and italics (_text_) for the reasoning.
+4. Professional clinical tone. Max 25 words per point.
+
+Diagnostic Statements:`;
+
+  const body: OllamaRequest = {
+    model: OLLAMA_MODEL,
+    prompt: diagnosticPrompt,
+    system: "You are a clinical diagnostic engine providing bulleted neuro-behavioral insights.",
+    stream: !!onToken,
+  };
+
+  try {
+    const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error(`Ollama error: ${res.status}`);
+
+    if (onToken && res.body) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(Boolean);
+        for (const line of lines) {
+          try {
+            const obj = JSON.parse(line);
+            if (obj.response) {
+              onToken(obj.response);
+              full += obj.response;
+            }
+          } catch {}
+        }
+      }
+      return full;
+    } else {
+      const data = await res.json();
+      return data.response ?? '';
+    }
+  } catch (err) {
+    console.warn('[VANI] Diagnostic fetch failed:', err);
+    return "";
   }
 }
 

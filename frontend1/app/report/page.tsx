@@ -13,6 +13,8 @@ import type { CognitiveInsight, CognitiveScores } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 import { VaniChat } from '@/components/ui/VaniChat';
 import { motion } from 'framer-motion';
+import { GameDiagnosticModal } from '@/components/ui/GameDiagnosticModal';
+import { generateGameDiagnostic } from '@/lib/ollamaClient';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -27,6 +29,33 @@ export default function ReportPage() {
   const [reportData, setReportData] = useState<SessionReport | null>(null);
   const [resolvedResults, setResolvedResults] = useState(results);
   const [ready, setReady] = useState(false);
+
+  // Diagnostic Modal State
+  const [diagnosticOpen, setDiagnosticOpen] = useState(false);
+  const [selectedInsight, setSelectedInsight] = useState<any>(null);
+  const [selectedMetrics, setSelectedMetrics] = useState<any[]>([]);
+  const [diagnosticText, setDiagnosticText] = useState('');
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+
+  const handleDeepAnalyze = useCallback(async (insight: CognitiveInsight, metrics: any[]) => {
+    setSelectedInsight(insight);
+    setSelectedMetrics(metrics);
+    setDiagnosticOpen(true);
+    setDiagnosticLoading(true);
+    setDiagnosticText('');
+
+    let streamed = '';
+    try {
+      await generateGameDiagnostic(insight, metrics, (chunk) => {
+        streamed += chunk;
+        setDiagnosticText(streamed);
+      });
+    } catch (err) {
+      setDiagnosticText("Unable to generate diagnostic. Please ensure Ollama is active.");
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  }, []);
 
   // Normalize scores from DB safely
   const normalizeScores = (value: any): CognitiveScores | null => {
@@ -315,12 +344,23 @@ export default function ReportPage() {
               <MetricCard 
                 key={ins.cognitive} 
                 insight={ins} 
-                result={resolvedResults.find(r => r.cognitive === ins.cognitive)}
+                result={resolvedResults.find(r => r.gameId === ins.gameId || r.cognitive === ins.cognitive)}
                 index={idx}
+                onDeepAnalyze={handleDeepAnalyze}
               />
             ))}
           </div>
         </section>
+
+        {/* Diagnostic Modal */}
+        <GameDiagnosticModal
+          isOpen={diagnosticOpen}
+          onClose={() => setDiagnosticOpen(false)}
+          insight={selectedInsight}
+          diagnostic={diagnosticText}
+          loading={diagnosticLoading}
+          metrics={selectedMetrics}
+        />
 
         {/* Final Actions */}
         <div className="flex flex-col sm:flex-row justify-center items-center gap-8 lg:gap-12 pb-32 mt-12 w-full max-w-5xl px-6">
