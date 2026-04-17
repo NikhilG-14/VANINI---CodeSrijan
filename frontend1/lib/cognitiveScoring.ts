@@ -120,12 +120,12 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
   };
 }
 
-const META: Record<CognitiveKey, { label: string; color: string; emoji: string }> = {
-  attention:      { label: 'Emotional Focus',   color: '#3b82f6', emoji: '🎯' },
-  memory:         { label: 'Mental Capacity',    color: '#8b5cf6', emoji: '🧠' },
-  impulsivity:    { label: 'Emotional Balance', color: '#ef4444', emoji: '⚡' },
-  flexibility:    { label: 'Adaptability',      color: '#10b981', emoji: '🧩' },
-  risk_behavior:  { label: 'Confidence Index',  color: '#f59e0b', emoji: '🎈' },
+const META: Record<CognitiveKey, { label: string; color: string; emoji: string; gameName: string }> = {
+  attention:      { label: 'Emotional Focus',   color: '#3b82f6', emoji: '🎯', gameName: 'Stroop Lab' },
+  memory:         { label: 'Mental Capacity',    color: '#8b5cf6', emoji: '🧠', gameName: 'Nexus Memory' },
+  impulsivity:    { label: 'Emotional Balance', color: '#ef4444', emoji: '⚡', gameName: 'Glimpse Control' },
+  flexibility:    { label: 'Adaptability',      color: '#10b981', emoji: '🧩', gameName: 'Pattern Shift' },
+  risk_behavior:  { label: 'Confidence Index',  color: '#f59e0b', emoji: '🎈', gameName: 'Aggression Flow' },
 };
 
 type Level = 'high' | 'moderate' | 'low';
@@ -168,9 +168,9 @@ export function getCognitiveInsights(scores: CognitiveScores): CognitiveInsight[
   return (Object.keys(scores) as CognitiveKey[]).map(cognitive => {
     const score = Math.round(scores[cognitive]);
     const lv = level(score);
-    const { label, color, emoji } = META[cognitive];
+    const { label, color, emoji, gameName } = META[cognitive];
     const { insight, suggestion } = INSIGHTS[cognitive][lv];
-    return { cognitive, score, label, color, emoji, insight, suggestion };
+    return { cognitive, score, label, gameName, color, emoji, insight, suggestion };
   });
 }
 

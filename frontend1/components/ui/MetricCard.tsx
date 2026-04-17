@@ -80,7 +80,7 @@ export function MetricCard({ insight, result, index }: Props) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="glass-card rounded-[2.5rem] p-8 group relative overflow-hidden hover:bg-white/[0.05] transition-all"
+      className="glass-card rounded-2xl p-8 group relative overflow-hidden hover:bg-white/[0.07] hover:border-white/20 transition-all duration-500 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border-white/5"
     >
       {/* Background Glow */}
       <div
@@ -93,7 +93,7 @@ export function MetricCard({ insight, result, index }: Props) {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-2xl transition-transform group-hover:scale-110"
+              className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-2xl transition-transform group-hover:scale-110"
               style={{ backgroundColor: `${insight.color}15`, border: `1px solid ${insight.color}30` }}
             >
               {insight.emoji}
@@ -133,7 +133,7 @@ export function MetricCard({ insight, result, index }: Props) {
 
         {/* Raw Data Grid */}
         {hasData ? (
-          <div className="bg-black/20 rounded-2xl p-5 border border-white/5 space-y-4">
+          <div className="bg-black/20 rounded-xl p-5 border border-white/5 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Raw Metrics</span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-[9px] font-black text-emerald-400 uppercase border border-emerald-500/20">Verified</span>
@@ -154,7 +154,7 @@ export function MetricCard({ insight, result, index }: Props) {
             </div>
           </div>
         ) : (
-          <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 text-center">
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5 text-center">
             <p className="text-amber-500/60 text-[11px] font-bold">Game not completed — score estimated from baseline.</p>
           </div>
         )}

@@ -16,6 +16,13 @@
 
   --color-brand-primary: #7c3aed;
   --color-brand-secondary: #06b6d4;
+  
+  --animate-shimmer: shimmer 2.5s infinite linear;
+  
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
 }
 
 @layer utilities {

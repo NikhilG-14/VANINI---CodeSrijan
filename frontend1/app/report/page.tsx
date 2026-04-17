@@ -128,40 +128,44 @@ export default function ReportPage() {
 
   return (
     <div className="w-full h-full overflow-y-auto bg-[#060a14] selection:bg-violet-500/30 font-sans">
-      <div className="fixed top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full opacity-10 blur-[150px] pointer-events-none"
-        style={{ background: dominant?.color || '#7c3aed' }} />
+      {/* Grid Pattern Overlay */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] select-none" 
+           style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-      <div className="max-w-6xl mx-auto px-6 py-16 flex flex-col gap-24">
+      <div className="max-w-7xl mx-auto px-16 py-24 flex flex-col items-center gap-24">
         {/* Header Section */}
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center relative pt-12"
+          className="flex flex-col items-center justify-center text-center relative pt-12 w-full"
         >
-          <div className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 mb-8 neon-glow-cyan">
+          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 mb-6 shadow-[0_0_20px_rgba(52,211,153,0.1)] relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent -translate-x-full animate-shimmer" />
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399] animate-pulse" />
-            Emotional State Synced
+            Vocal Profile Verified
           </div>
-          <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-6">
-            Emotional <span className="text-gradient">Blueprint</span>
+          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter mb-4 text-center w-full">
+            Cognitive <span className="text-gradient">Signature</span>
           </h1>
-          <p className="text-white/40 text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-            I've looked at how you moved and reacted today. This is a map of your emotional well-being based on those quiet patterns.
+          <p className="text-white/40 text-lg max-w-3xl mx-auto font-medium leading-relaxed text-center w-full">
+            Your behavioral patterns across {results.length} cognitive nodes have been synthesized into a unique performance dossier.
           </p>
         </motion.div>
 
         {/* Central Dashboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">
           {/* Radar Visualization */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="lg:col-span-7 glass-card rounded-[3.5rem] p-4 min-h-[500px] flex items-center justify-center relative overflow-hidden group"
+            whileHover={{ y: -5, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="lg:col-span-7 glass-card rounded-2xl p-4 min-h-[500px] flex items-center justify-center relative overflow-hidden group hover:shadow-[0_20px_50px_-12px_rgba(124,58,237,0.3)] border-white/5 active:scale-[0.99]"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             <div className="relative z-10 w-full flex flex-col items-center">
-               <CognitiveRadarChart insights={insights} size={450} />
-               <div className="mt-4 text-[10px] font-black text-white/20 uppercase tracking-[0.5em] animate-pulse">Emotional Rhythm Detected</div>
+               <CognitiveRadarChart insights={insights} size={500} />
+               <div className="mt-4 text-[10px] font-black text-white/40 uppercase tracking-[0.6em] animate-pulse group-hover:text-violet-400 transition-colors">Emotional Rhythm Detected</div>
             </div>
           </motion.div>
 
@@ -170,17 +174,17 @@ export default function ReportPage() {
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-card rounded-[2.5rem] p-1 overflow-hidden"
+              className="glass-card rounded-2xl p-1 overflow-hidden"
             >
-              <div className="bg-white/[0.03] p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="bg-white/[0.03] py-6 pr-8 pl-[34px] border-b border-white/5 flex items-center justify-between">
                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Assistant Assessment</span>
                 {ollamaOnline ? (
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-black tracking-widest uppercase flex items-center gap-2">
+                  <span className="px-4 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-black tracking-widest uppercase flex items-center gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Deep Logic Sync
                   </span>
                 ) : (
-                  <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[9px] font-black tracking-widest uppercase">Hybrid Mode</span>
+                  <span className="px-4 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[9px] font-black tracking-widest uppercase">Hybrid Mode</span>
                 )}
               </div>
               <div className="p-4">
@@ -195,7 +199,8 @@ export default function ReportPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="flex-1 glass-card rounded-[2.5rem] p-8 flex flex-col justify-center gap-6 group"
+              whileHover={{ x: 5 }}
+              className="flex-1 glass-card rounded-2xl p-8 flex flex-col justify-start gap-6 group hover:bg-white/[0.05] transition-all duration-500 border-white/5"
             >
               <h3 className="text-white font-black text-xl flex items-center gap-4">
                 <span className="w-1.5 h-6 bg-violet-500 rounded-full" />
@@ -206,20 +211,24 @@ export default function ReportPage() {
               </p>
               <button 
                 onClick={handleConsultVani}
-                className="w-full py-5 rounded-2xl bg-violet-600/90 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-10px_rgba(124,58,237,0.4)] flex items-center justify-center gap-3 group-hover:neon-glow-violet"
+                className="w-full py-5 rounded-xl bg-violet-600/90 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-10px_rgba(124,58,237,0.4)] flex items-center justify-center gap-3 group-hover:neon-glow-violet"
               >
-                Launch 3D Consultation
+                Chat with VANI
                 <span className="text-xl">→</span>
               </button>
             </motion.div>
           </div>
         </div>
 
-        {/* Your Emotional Blueprint: Metrics Breakdown */}
-        <section className="space-y-12">
-          <div className="flex flex-col gap-4">
-            <h2 className="text-4xl font-black text-white tracking-tight">Your <span className="text-gradient">Emotional</span> Spectrum</h2>
-            <p className="text-white/40 font-medium">Every reaction tells a story about how your mind and heart are working together right now.</p>
+        {/* The Science: Metrics Breakdown */}
+        <section className="space-y-12 w-full">
+          <div className="flex flex-col items-center text-center gap-4 group">
+            <h2 className="text-4xl font-black text-white tracking-tight flex items-center gap-4">
+              <span className="w-8 h-px bg-white/20 group-hover:w-16 transition-all duration-700" />
+              The <span className="text-gradient">Science</span> of You
+              <span className="w-8 h-px bg-white/20 group-hover:w-16 transition-all duration-700" />
+            </h2>
+            <p className="text-white/40 font-medium max-w-2xl group-hover:text-white/60 transition-colors duration-500">Behind every score is a stream of sub-second decisions and automatic responses.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -235,10 +244,14 @@ export default function ReportPage() {
         </section>
 
         {/* Contextual Chat */}
-        <section className="space-y-12 pb-24 border-t border-white/5 pt-24">
-          <div className="text-center">
-            <h2 className="text-4xl font-black text-white tracking-tight mb-4 italic">Interactive Discovery</h2>
-            <p className="text-white/40 max-w-xl mx-auto font-medium">
+        <section className="space-y-12 pb-24 border-t border-white/5 pt-24 w-full flex flex-col items-center">
+          <div className="text-center group">
+            <h2 className="text-4xl font-black text-white tracking-tight mb-4 flex items-center justify-center gap-4 italic font-serif">
+              <span className="w-6 h-px bg-white/10 group-hover:bg-violet-500/50 transition-colors" />
+              Interactive Discovery
+              <span className="w-6 h-px bg-white/10 group-hover:bg-violet-500/50 transition-colors" />
+            </h2>
+            <p className="text-white/40 max-w-xl mx-auto font-medium group-hover:text-white/60 transition-colors">
               Ask VANI specifics about these metrics. She can explain how your reaction times correlate with real-world scenarios.
             </p>
           </div>
@@ -248,15 +261,15 @@ export default function ReportPage() {
         </section>
 
         {/* Final Actions */}
-        <div className="flex flex-col sm:flex-row gap-6 pb-20 mt-8">
+        <div className="flex flex-col sm:flex-row justify-center items-center gap-8 pb-32 mt-12 w-full max-w-5xl px-4">
           <button
             onClick={handleRestart}
-            className="flex-1 py-6 rounded-[2rem] bg-violet-600/20 border border-violet-500/30 font-pixel text-[10px] text-violet-300 hover:bg-violet-600/30 transition-all transform hover:-translate-y-1 active:scale-95 shadow-xl"
+            className="flex-1 py-14 rounded-[2.5rem] bg-violet-600/20 border-2 border-violet-500/40 font-pixel text-lg text-violet-300 hover:bg-violet-600/30 transition-all transform hover:-translate-y-2 active:scale-95 shadow-xl tracking-[0.2em]"
           >
             RESTORE SYSTEM
           </button>
           <Link href="/"
-            className="flex-1 py-6 rounded-[2rem] bg-white/5 border border-white/10 font-pixel text-[10px] text-white/40 hover:text-white/80 transition-all text-center hover:bg-white/10"
+            className="flex-1 py-14 rounded-[2.5rem] bg-white/5 border-2 border-white/10 font-pixel text-lg text-white/40 hover:text-white/80 transition-all text-center hover:bg-white/10 hover:-translate-y-2 active:scale-95 shadow-xl tracking-[0.2em] flex items-center justify-center"
           >
             DISCONNECT SESSION
           </Link>

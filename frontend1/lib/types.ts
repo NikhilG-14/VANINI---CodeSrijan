@@ -84,6 +84,7 @@ export interface CognitiveInsight {
   cognitive: CognitiveKey;
   score: number;
   label: string;
+  gameName?: string;
   color: string;
   emoji: string;
   insight: string;

@@ -89,7 +89,7 @@ export function VaniChat({ scores, insights }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-[600px] w-full bg-[#0d1424] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-[600px] w-full bg-[#0d1424] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
         {messages.length === 0 && (
@@ -102,7 +102,7 @@ export function VaniChat({ scores, insights }: Props) {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] px-6 py-4 rounded-3xl text-sm leading-relaxed ${
+            <div className={`max-w-[80%] px-6 py-4 rounded-xl text-sm leading-relaxed ${
               m.role === 'user' 
                 ? 'bg-violet-600 text-white rounded-tr-none' 
                 : 'bg-white/5 text-white/90 border border-white/10 rounded-tl-none'
@@ -113,7 +113,7 @@ export function VaniChat({ scores, insights }: Props) {
         ))}
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-white/5 px-6 py-4 rounded-3xl rounded-tl-none border border-white/10 flex gap-1">
+            <div className="bg-white/5 px-6 py-4 rounded-xl rounded-tl-none border border-white/10 flex gap-1">
               <div className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
               <div className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
               <div className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -131,12 +131,12 @@ export function VaniChat({ scores, insights }: Props) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Type your reflection..."
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-sm outline-none focus:border-violet-500/50 focus:bg-white/10 transition-all pr-16"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-white text-sm outline-none focus:border-violet-500/50 focus:bg-white/10 transition-all pr-16"
           />
           <button
             onClick={handleSend}
             disabled={isTyping || !input.trim()}
-            className="absolute right-2 p-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="absolute right-2 p-3 rounded-lg bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
