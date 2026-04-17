@@ -1,4 +1,5 @@
 import type { CognitiveScores, CognitiveInsight } from './types';
+import { useUserStore } from '@/store/userStore';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 
@@ -54,45 +55,33 @@ function buildSystemPrompt(
     if (history.previous_sessions?.length > 0) {
       historyContext += '\nPAST SESSION TRENDS:\n' + history.previous_sessions.map((s, idx) => {
         const scoreSummary = Object.entries((s.scores ?? {})).map(([k, v]) => `${k}: ${v}%`).join(', ');
-        const skippedGames = (s.results ?? []).filter((r) => r?.quitEarly).map((r) => r.gameId);
-        const skips = skippedGames.length > 0 ? ` (User skipped: ${skippedGames.join(', ')})` : '';
-        return `- Session ${idx + 1}: ${scoreSummary}${skips}`;
+        return `- Session ${idx + 1}: ${scoreSummary}`;
       }).join('\n');
-    }
-    if (history.aggregated_behavior) {
-      historyContext += `\nAGGREGATED BEHAVIOR:\n- ${JSON.stringify(history.aggregated_behavior)}`;
-    }
-    if (history.recent_chat?.length > 0) {
-      historyContext += '\nPAST CONVERSATION GLIMPSES:\n' + history.recent_chat.map((c) =>
-        `- ${c.role.toUpperCase()}: ${c.content}`
-      ).join('\n');
     }
   }
 
-  return `You are VANI, a highly sophisticated AI behavioral analyst and empathetic companion.
+  return `You are VANI, a highly sophisticated AI behavioral analyst for a Mental Health Monitoring and Support System.
 You have just observed a user complete a complex cognitive assessment spanning multiple domains.
 
 YOUR OBJECTIVE:
-Synthesize a deep psychological profile based on the metrics below. 
-Do not just list the numbers. Explain *why* these numbers matter for their daily life.
-If they showed high impulsivity, explain the trade-off with speed. If they had focus drops, offer gentle validation.
+Provide a deep psychological profile correlating their telemetry data to real-world markers for stress, anxiety, or depression.
+
+CRITICAL FORMATTING RULES:
+1. You MUST generate EXACTLY 8 crisp, powerful bullet points. Not 7, not 9. Exactly 8.
+2. Use the format: "- [Domain Focus] Observation: Clinical significance."
+3. Do NOT include markdown bolding formatting (**) except for the initial word.
+4. Keep each point under 20 words if possible.
 
 BEHAVIORAL DOSSIER (Current Session):
 ${insights.map(i => `- ${i.label}: ${i.score}% (${i.insight})`).join('\n')}
 
 COGNITIVE RAW DATA:
 ${Object.entries(scores).map(([k,v]) => `- ${k.toUpperCase()}: ${v}`).join('\n')}
-
 ${historyContext}
 
-RESPONSE STYLE:
-- Tone: Empathetic, analytical yet warm, professional "Therapy Assistant".
-- Format: 2-3 detailed paragraphs.
-- Address the user as "you". 
-- Start with a "Neural Summary" that captures their cognitive state.
-
-Wait for the data to be fully processed, then provide your synthesis.`;
+Analyze the data now and output exactly 8 bulleted points analyzing the potential causes and connections to stress, anxiety, or mental fatigue based on their performance.`;
 }
+
 
 type OllamaRequest = {
   model: string;
@@ -101,6 +90,63 @@ type OllamaRequest = {
   stream: boolean;
 };
 
+export async function syncMasterMemoir(
+  userId: string,
+  currentSummary: string,
+  scores: CognitiveScores
+): Promise<string> {
+  try {
+    // 1. Fetch current memoir
+    const memoirUrl = `${API_BASE}/user/memoir/${encodeURIComponent(userId)}`;
+    const mRes = await fetch(memoirUrl);
+    const memoirData = await mRes.json();
+    const oldMemoir = memoirData?.master_summary || "";
+
+    // 2. Synthesize new consolidated narrative
+    const mergePrompt = `You are VANI, a cognitive biographer. 
+Incorporate the followsing NEW session findings into the user's EXISTING cognitive memoir.
+OLD MEMOIR: "${oldMemoir}"
+NEW FINDINGS: "${currentSummary}"
+SCORES: ${JSON.stringify(scores)}
+
+Objective: Create a single, cohesive, evolving narrative of their cognitive journey. 
+Keep it empathetic and professional. Max 150 words. Use bullet points for key milestones.
+Output ONLY the new consolidated narrative.`;
+
+    const body: OllamaRequest = {
+      model: OLLAMA_MODEL,
+      prompt: mergePrompt,
+      system: "You are VANI, a master of longitudinal cognitive storytelling.",
+      stream: false,
+    };
+
+    const ollamaRes = await fetch(`${OLLAMA_BASE}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (ollamaRes.ok) {
+      const data = await ollamaRes.json();
+      const updatedMemoir = data.response;
+      
+      // 3. Save back to DB
+      await fetch(`${API_BASE}/user/memoir/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, master_summary: updatedMemoir })
+      });
+
+      return updatedMemoir;
+    }
+    return oldMemoir || currentSummary;
+  } catch (err) {
+    console.warn('[VANI] Failed to sync master memoir:', err);
+    return currentSummary;
+  }
+}
+
 export async function generateAvatarResponse(
   userMessage: string,
   scores: CognitiveScores,
@@ -108,10 +154,21 @@ export async function generateAvatarResponse(
   history?: UserDossier,
   onToken?: (chunk: string) => void
 ): Promise<string> {
+  // Fetch master memoir to provide context for the response
+  const vimid = useUserStore.getState().vimid;
+  let masterMemoir = "";
+  if (vimid) {
+    try {
+      const mRes = await fetch(`${API_BASE}/user/memoir/${encodeURIComponent(vimid)}`);
+      const mData = await mRes.json();
+      masterMemoir = mData?.master_summary || "";
+    } catch {}
+  }
+
   const body: OllamaRequest = {
     model: OLLAMA_MODEL,
     prompt: userMessage,
-    system: buildSystemPrompt(scores, insights, history),
+    system: buildSystemPrompt(scores, insights, history) + `\n\nLONG-TERM MEMOIR CONTEXT:\n${masterMemoir}`,
     stream: !!onToken,
   };
 
@@ -334,5 +391,16 @@ ${JSON.stringify(report.delta, null, 2)}`;
   } catch (err) {
     console.warn('[VANI] Failed to load session report:', err);
     return null;
+  }
+}
+
+export async function getCognitiveReports(userId: string): Promise<any[]> {
+  try {
+    const res = await fetch(`${API_BASE}/session/reports/${encodeURIComponent(userId)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (err) {
+    console.warn('[VANI] Failed to load formal cognitive reports:', err);
+    return [];
   }
 }

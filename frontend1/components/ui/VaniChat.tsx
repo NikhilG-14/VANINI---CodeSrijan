@@ -92,7 +92,19 @@ export function VaniChat({ scores, insights }: Props) {
   return (
     <div className="flex flex-col h-[600px] w-full bg-[#0d1424] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin scrollbar-thumb-white/10 relative">
+        {dossier && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-10"
+          >
+            <div className="px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 backdrop-blur-md flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-violet-300/80 transition-all group-hover:text-white">Cognitive History Synced</span>
+            </div>
+          </motion.div>
+        )}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
             <div className="text-4xl">🧠</div>

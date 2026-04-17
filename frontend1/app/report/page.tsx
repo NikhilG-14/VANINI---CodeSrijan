@@ -120,7 +120,15 @@ export default function ReportPage() {
           setAvatarMsg(streamed);
         }
       ).then(full => {
-        if (!full) setAvatarMsg(fallback);
+        if (!full) {
+          setAvatarMsg(fallback);
+        } else {
+          // SYNC MASTER MEMOIR: Fuse current session findings into the long-term biography
+          const vimid = useUserStore.getState().vimid;
+          if (vimid) {
+             syncMasterMemoir(vimid, full, computed);
+          }
+        }
       }).catch(() => setAvatarMsg(fallback));
     });
   }, [computed, ready]);
@@ -137,7 +145,8 @@ export default function ReportPage() {
       errors: r.errorCount,
       trials: r.totalActions
     }));
-    const payload = btoa(encodeURIComponent(JSON.stringify({ scores: computed, insights, telemetry })));
+    const vimid = useUserStore.getState().vimid;
+    const payload = btoa(encodeURIComponent(JSON.stringify({ scores: computed, insights, telemetry, vimid })));
     window.open(`http://localhost:5173/?sessionData=${payload}`, '_blank');
   }, [computed, insights, resolvedResults]);
 

@@ -121,6 +121,29 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # Create cognitive_reports table (The "real" reports table the user wants)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cognitive_reports (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                session_id UUID REFERENCES game_sessions(id),
+                user_id TEXT,
+                scores_summary JSONB,
+                ai_finding TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # Create user_memoirs table (Cumulative summary)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_memoirs (
+                user_id TEXT PRIMARY KEY,
+                master_summary TEXT,
+                session_count INTEGER DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
         logger.info("Database schema initialized successfully")
 
 def insert_data_into_db(
@@ -368,6 +391,52 @@ def get_chat_history(user_id, limit=20):
         logger.error(f"Error retrieving chat history: {e}")
         return []
 
+def save_cognitive_report(session_id, user_id, scores, ai_finding):
+    """Saves a formal cognitive analysis report."""
+    conn = get_db_connection()
+    if not conn: return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO cognitive_reports (session_id, user_id, scores_summary, ai_finding)
+                VALUES (%s, %s, %s, %s) RETURNING id;
+            """, (session_id, user_id, json.dumps(scores), ai_finding))
+            return str(cur.fetchone()[0])
+    except Exception as e:
+        logger.error(f"Error saving cognitive report: {e}")
+        return None
+
+def upsert_user_memoir(user_id, master_summary):
+    """Stores or updates the cumulative user memoir."""
+    conn = get_db_connection()
+    if not conn: return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO user_memoirs (user_id, master_summary, session_count)
+                VALUES (%s, %s, 1)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    master_summary = EXCLUDED.master_summary,
+                    session_count = user_memoirs.session_count + 1,
+                    updated_at = CURRENT_TIMESTAMP;
+            """, (user_id, master_summary))
+            return True
+    except Exception as e:
+        logger.error(f"Error upserting user memoir: {e}")
+        return False
+
+def get_user_memoir(user_id):
+    """Retrieves the master cognitive narrative for a user."""
+    conn = get_db_connection()
+    if not conn: return None
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT master_summary, session_count FROM user_memoirs WHERE user_id = %s", (user_id,))
+            return cur.fetchone()
+    except Exception as e:
+        logger.error(f"Error getting user memoir: {e}")
+        return None
+
 def upload_document_embeddings(file_contents):
     """
     Upload embeddings to PostgreSQL.
@@ -387,6 +456,68 @@ def upload_document_embeddings(file_contents):
                 logger.info(f"Uploaded {filename} embeddings to PostgreSQL.")
     except Exception as e:
         logger.error(f"Error uploading embeddings to PG: {e}")
+
+def migrate_from_old_db():
+    """
+    Transfers data from the old hardcoded Neon DB to the new DB configured in .env.
+    """
+    old_url = "postgresql://neondb_owner:npg_8l6CSWboPhGt@ep-silent-butterfly-am1tj9uq-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    new_url = os.getenv("DATABASE_URL")
+    
+    if not new_url or old_url in new_url:
+        logger.error("New DATABASE_URL not set or identical to old one. Migration aborted.")
+        return False
+    
+    try:
+        old_conn = psycopg2.connect(old_url)
+        new_conn = psycopg2.connect(new_url)
+        new_conn.autocommit = True
+        
+        tables = ['game_sessions', 'cognitive_reports', 'user_memoirs', 'chat_history']
+        counts = {}
+        
+        with old_conn.cursor(cursor_factory=RealDictCursor) as old_cur, new_conn.cursor() as new_cur:
+            for table in tables:
+                logger.info(f"Migrating table: {table}")
+                old_cur.execute(f"SELECT * FROM {table};")
+                rows = old_cur.fetchall()
+                if not rows: continue
+                
+                # Dynamic insert based on keys
+                cols = rows[0].keys()
+                placeholders = ", ".join(["%s"] * len(cols))
+                col_names = ", ".join(cols)
+                
+                # Check for conflicts on user_memoirs (PK is user_id)
+                suffix = ""
+                if table == 'user_memoirs':
+                    suffix = " ON CONFLICT (user_id) DO NOTHING"
+                elif table == 'cognitive_reports':
+                    suffix = " ON CONFLICT (id) DO NOTHING"
+                elif table == 'game_sessions' or table == 'chat_history':
+                    suffix = " ON CONFLICT (id) DO NOTHING"
+
+                insert_query = f"INSERT INTO {table} ({col_names}) VALUES ({placeholders}){suffix};"
+                
+                inserted = 0
+                for row in rows:
+                    try:
+                        # Convert dict values to json strings for JSONB columns if needed
+                        values = [json.dumps(v) if isinstance(v, (dict, list)) else v for v in row.values()]
+                        new_cur.execute(insert_query, tuple(values))
+                        inserted += 1
+                    except Exception as e:
+                        logger.warning(f"Skipped a row in {table}: {e}")
+                
+                counts[table] = inserted
+        
+        old_conn.close()
+        new_conn.close()
+        logger.info(f"Migration complete: {counts}")
+        return counts
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+        return False
 
 # Initialize schema on load
 try:

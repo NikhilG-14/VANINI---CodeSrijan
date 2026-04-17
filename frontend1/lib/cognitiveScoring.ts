@@ -16,23 +16,21 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
   const s: Partial<CognitiveScores> = {};
 
   for (const r of results) {
+    const total = r.totalActions || 1;
+    const errors = r.errorCount || 0;
+    const fallbackAcc = clamp((total - errors) / total, 0, 1);
+
     // ─────────────────────────────────────────────────────────────────────────
     // STROOP → Selective Attention
-    // Score based on: accuracy, and cost of interference (incongruent slowdown).
-    // High score = high accuracy + low congruent/incongruent gap.
-    // ─────────────────────────────────────────────────────────────────────────
     if (r.cognitive === 'attention') {
-      const acc = (r.rawData?.accuracy as number) ?? 0;
+      const acc = (r.rawData?.accuracy as number) ?? fallbackAcc;
       const conRT  = (r.rawData?.congruentRT as number) ?? 500;
       const inconRT = (r.rawData?.incongruentRT as number) ?? 500;
 
-      // Stroop interference = how much slower they were on incongruent trials
-      // Normalized: 0ms diff = no penalty, 500ms diff = max ~33 pt penalty
       const interferencePenalty = conRT > 0
         ? clamp(((inconRT - conRT) / conRT) * 50, 0, 40)
         : 0;
 
-      // Reaction time score: reward fast responders (sub-600ms is excellent)
       const allRTs = r.reactionTimeMs ?? [];
       const meanRT = avg(allRTs);
       const speedBonus = meanRT > 0 ? clamp(10 - (meanRT / 100), 0, 10) : 0;
@@ -42,75 +40,49 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
 
     // ─────────────────────────────────────────────────────────────────────────
     // N-BACK → Working Memory
-    // Score based on: hit rate (correctly identifying matches) vs false alarm rate.
-    // d-prime-inspired: penalize heavily for false alarms.
-    // ─────────────────────────────────────────────────────────────────────────
     if (r.cognitive === 'memory') {
-      const accuracy  = (r.rawData?.accuracy as number) ?? 0;
+      const accuracy  = (r.rawData?.accuracy as number) ?? fallbackAcc;
       const falsePos  = (r.rawData?.falsePositives as number) ?? 0;
-      const hits      = (r.rawData?.hits as number) ?? 0;
-      const totalTrials = r.totalActions || 1;
+      const faRate = falsePos / Math.max(total, 1);
 
-      // False alarm rate (penalizes guessing)
-      const faRate = falsePos / Math.max(totalTrials, 1);
-
-      // Working memory score: accuracy is primary, false alarms are penalty
       const baseScore = accuracy * 100;
-      const faPenalty = faRate * 60; // 60% false alarm rate = -36 pts
+      const faPenalty = faRate * 60;
 
       s.memory = clamp(baseScore - faPenalty);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // GO/NO-GO → Impulsivity (Inhibitory Control)
-    // Score = commission error rate. HIGH score = HIGH impulsivity (bad control).
-    // Commission errors = pressing when you shouldn't (failed inhibition).
-    // ─────────────────────────────────────────────────────────────────────────
+    // GO/NO-GO → Impulsivity
     if (r.cognitive === 'impulsivity') {
-      const commErrors = (r.rawData?.commissionErrors as number) ?? r.errorCount ?? 0;
-      const totalNoGo  = (r.rawData?.totalNoGo as number) ?? Math.floor((r.totalActions || 1) * 0.3);
+      const commErrors = (r.rawData?.commissionErrors as number) ?? errors;
+      const totalNoGo  = (r.rawData?.totalNoGo as number) ?? Math.floor(total * 0.3);
 
-      // Impulsivity score = % of No-Go stimuli that triggered a response
-      const impRate = totalNoGo > 0 ? (commErrors / totalNoGo) : 0;
+      const impRate = totalNoGo > 0 ? (commErrors / totalNoGo) : (errors / total);
       s.impulsivity = clamp(impRate * 100);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // WCST → Cognitive Flexibility
-    // Score based on: perseverative errors and total trials completed.
-    // HIGH flexibility = low perseveration + many trials completed.
-    // ─────────────────────────────────────────────────────────────────────────
     if (r.cognitive === 'flexibility') {
-      const pes   = (r.rawData?.perseverativeErrors as number) ?? r.errorCount ?? 0;
-      const total = r.totalActions || 1;
-
-      // Perseverative error rate: 1 PE per 3 trials is significant
+      const pes   = (r.rawData?.perseverativeErrors as number) ?? errors;
       const peRate = pes / total;
-      // Activity credit: more trials = more data = better measurement
-      const activityBonus = clamp(total * 0.5, 0, 20); // up to +20 for being active
+      const activityBonus = clamp(total * 0.5, 0, 20);
       s.flexibility = clamp(100 - (peRate * 200) + activityBonus);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // BART → Risk Behavior
-    // Score = how aggressively the user pumped relative to safe threshold.
-    // HIGH score = high risk-seeking. Moderate (30-60) is optimal.
-    // ─────────────────────────────────────────────────────────────────────────
     if (r.cognitive === 'risk_behavior') {
-      const avgPumps   = (r.rawData?.avgPumps as number) ?? 0;
-      const poppedRatio = (r.rawData?.poppedRatio as number) ?? 0;
+      const avgPumps   = (r.rawData?.avgPumps as number) ?? 5; // mid-range fallback
+      const poppedRatio = (r.rawData?.poppedRatio as number) ?? (errors / total);
 
-      // Risk score: avg pumps as fraction of a risky threshold (~18 pumps)
       const pumpScore    = clamp((avgPumps / 18) * 100);
-      // Popped ratio penalty/bonus: high popping means overconfidence
-      const popAdjust    = (poppedRatio - 0.3) * 40; // neutral at 30% pop rate
+      const popAdjust    = (poppedRatio - 0.3) * 40;
 
       s.risk_behavior = clamp(pumpScore + popAdjust);
     }
   }
 
-  // ─── Return actual computed values, NOT masked defaults ───────────────────
-  // Only use defaults for domains that had NO game played at all.
   return {
     attention:    s.attention    ?? 50,
     memory:       s.memory       ?? 50,
@@ -120,12 +92,37 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
   };
 }
 
-const META: Record<CognitiveKey, { label: string; color: string; emoji: string; gameName: string }> = {
-  attention:      { label: 'Emotional Focus',   color: '#3b82f6', emoji: '🎯', gameName: 'Stroop Lab' },
-  memory:         { label: 'Mental Capacity',    color: '#8b5cf6', emoji: '🧠', gameName: 'Nexus Memory' },
-  impulsivity:    { label: 'Emotional Balance', color: '#ef4444', emoji: '⚡', gameName: 'Glimpse Control' },
-  flexibility:    { label: 'Adaptability',      color: '#10b981', emoji: '🧩', gameName: 'Pattern Shift' },
-  risk_behavior:  { label: 'Confidence Index',  color: '#f59e0b', emoji: '🎈', gameName: 'Aggression Flow' },
+const META: Record<CognitiveKey, { label: string; domainTitle: string; definition: string; color: string; emoji: string; gameName: string }> = {
+  attention: { 
+    label: 'Emotional Focus',   
+    domainTitle: 'Sustained Vigilant Control',
+    definition: 'Selection of relevant stimuli while suppressing irrelevant emotional noise.',
+    color: '#3b82f6', emoji: '🎯', gameName: 'Stroop Lab' 
+  },
+  memory: { 
+    label: 'Mental Capacity',    
+    domainTitle: 'Iterative Working Memory',
+    definition: 'Hold and manipulate complex information strings over a temporal sequence.',
+    color: '#8b5cf6', emoji: '🧠', gameName: 'Nexus Memory' 
+  },
+  impulsivity: { 
+    label: 'Emotional Balance', 
+    domainTitle: 'Inhibitory Motor Regulation',
+    definition: 'Capacity to withhold automatic physiological responses to non-target stressors.',
+    color: '#ef4444', emoji: '⚡', gameName: 'Glimpse Control' 
+  },
+  flexibility: { 
+    label: 'Adaptability',      
+    domainTitle: 'Cognitive Set Shifting',
+    definition: 'Speed of behavioral adaptation when environmental "rules" or goals change.',
+    color: '#10b981', emoji: '🧩', gameName: 'Pattern Shift' 
+  },
+  risk_behavior: { 
+    label: 'Confidence Index',  
+    domainTitle: 'Threshold Decision Calibration',
+    definition: 'Risk assessment accuracy based on cumulative reward/burst probability.',
+    color: '#f59e0b', emoji: '🎈', gameName: 'Aggression Flow' 
+  },
 };
 
 type Level = 'high' | 'moderate' | 'low';
@@ -168,9 +165,9 @@ export function getCognitiveInsights(scores: CognitiveScores): CognitiveInsight[
   return (Object.keys(scores) as CognitiveKey[]).map(cognitive => {
     const score = Math.round(scores[cognitive]);
     const lv = level(score);
-    const { label, color, emoji, gameName } = META[cognitive];
+    const { label, domainTitle, definition, color, emoji, gameName } = META[cognitive];
     const { insight, suggestion } = INSIGHTS[cognitive][lv];
-    return { cognitive, score, label, gameName, color, emoji, insight, suggestion };
+    return { cognitive, score, label, domainTitle, definition, gameName, color, emoji, insight, suggestion };
   });
 }
 
@@ -188,4 +185,86 @@ export function getAvatarMessage(scores: CognitiveScores): string {
   const dominantScore = Math.round(scores[dominant]);
 
   return `Your cognitive profile shows a clear strength in ${META[dominant].label} (${dominantScore}/100) — the highest signal in your session today. Your profile looks generally balanced, with no critical stress indicators. We can explore what drives this pattern if you'd like, or focus on areas you want to strengthen.`;
+}
+
+// ── Scientific Data Extraction ────────────────────────────────────────────────
+
+export interface SessionParameter {
+  label: string;
+  value: string;
+  unit: string;
+  isHigh: boolean;
+  desc?: string;
+}
+
+export function getScientificMetrics(cognitive: string, result?: GameResult | any): SessionParameter[] {
+  if (!result) return [];
+  const rt = avg(result.reactionTimeMs ?? result.reaction_time_ms ?? []);
+  const rtDisplay = rt > 0 ? rt.toFixed(0) : '—';
+  const total = result.totalActions || result.total_actions || 1;
+  const errors = result.errorCount ?? result.error_count ?? 0;
+  const raw = result.rawData || result.raw_data || {};
+
+  switch (cognitive) {
+    case 'attention': {
+      const conRT = raw.congruentRT ?? 0;
+      const inconRT = raw.incongruentRT ?? 0;
+      const interference = conRT > 0 && inconRT > 0 ? (inconRT - conRT).toFixed(0) : '—';
+      const acc = raw.accuracy != null ? (raw.accuracy * 100).toFixed(1) : (((total - errors) / total) * 100).toFixed(1);
+      return [
+        { label: 'Reaction Time', value: rtDisplay, unit: 'ms', isHigh: false },
+        { label: 'Accuracy', value: acc, unit: '%', isHigh: true },
+        { label: 'Error Rate (Incongruent)', value: String(errors), unit: 'trials', isHigh: false },
+        { label: 'Interference Score', value: String(interference), unit: 'ms', isHigh: typeof interference === 'number' && interference > 100, desc: 'RT(incongruent) − RT(congruent)' },
+      ];
+    }
+    case 'memory': {
+      const acc = raw.accuracy != null ? (raw.accuracy * 100).toFixed(1) : (((total - errors) / total) * 100).toFixed(1);
+      const hits = raw.hits ?? (total - errors);
+      const falsePos = raw.falsePositives ?? errors;
+      const faRate = ((falsePos / total) * 100).toFixed(1);
+      return [
+        { label: 'Hit Rate', value: acc, unit: '%', isHigh: true, desc: 'Correct matches' },
+        { label: 'False Alarm Rate', value: faRate, unit: '%', isHigh: false },
+        { label: 'Miss Rate', value: ((errors / total) * 100).toFixed(1), unit: '%', isHigh: false },
+        { label: 'Reaction Time', value: rtDisplay, unit: 'ms', isHigh: false },
+      ];
+    }
+    case 'impulsivity': {
+      const commErrors = raw.commissionErrors ?? errors;
+      const omErrors = raw.omissionErrors ?? 0;
+      const totalNoGo = raw.totalNoGo ?? total;
+      const errRate = ((errors / total) * 100).toFixed(1);
+      return [
+        { label: 'Commission Errors', value: String(commErrors), unit: 'trials', isHigh: false, desc: 'Wrong taps on No-Go' },
+        { label: 'Omission Errors', value: String(omErrors), unit: 'trials', isHigh: false, desc: 'Missed Go stimuli' },
+        { label: 'Reaction Time', value: rtDisplay, unit: 'ms', isHigh: false },
+        { label: 'Error Rate', value: errRate, unit: '%', isHigh: false },
+      ];
+    }
+    case 'flexibility': {
+      const perErrors = raw.perseverativeErrors ?? errors;
+      const shifts = raw.ruleShifts ?? 0;
+      const shiftRate = ((shifts / total) * 100).toFixed(1);
+      return [
+        { label: 'Perseverative Errors', value: String(perErrors), unit: 'trials', isHigh: false, desc: 'Applying outdated rules' },
+        { label: 'Rule Shifts Completed', value: String(shifts), unit: 'shifts', isHigh: true },
+        { label: 'Shift Success Rate', value: shiftRate, unit: '%', isHigh: true },
+        { label: 'Reaction Time', value: rtDisplay, unit: 'ms', isHigh: false },
+      ];
+    }
+    case 'risk_behavior': {
+      const avgPumps = raw.avgPumps ? (raw.avgPumps as number).toFixed(1) : '—';
+      const popRatio = raw.poppedRatio != null ? (raw.poppedRatio * 100).toFixed(1) : (((errors) / total) * 100).toFixed(1);
+      const score = raw.totalScore ?? '—';
+      return [
+        { label: 'Average Pumps', value: String(avgPumps), unit: 'pumps/trial', isHigh: true },
+        { label: 'Burst Rate', value: popRatio, unit: '%', isHigh: false, desc: 'Risk execution failure' },
+        { label: 'Risk Score', value: String(score), unit: 'pts', isHigh: true },
+        { label: 'Total Trials', value: String(total), unit: '', isHigh: true },
+      ];
+    }
+    default:
+      return [];
+  }
 }

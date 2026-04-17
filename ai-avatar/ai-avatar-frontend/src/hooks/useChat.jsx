@@ -10,21 +10,36 @@ export const ChatProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [cameraZoomed, setCameraZoomed] = useState(true);
   const [sessionContext, setSessionContext] = useState(null);
+  const [userId, setUserId] = useState(null);
 
-  const chat = async (text) => {
+  const chat = async (text, overrideContext = null, overrideUserId = null) => {
     setLoading(true);
+    const contextToUse = overrideContext || sessionContext;
+    const userToUse = overrideUserId || userId;
+    
     try {
-      const data = await fetch(`${backendUrl}/chat`, {
+      const history = messages.slice(-4).map(m => ({
+        role: m.fromUser ? "user" : "assistant",
+        content: m.text
+      }));
+
+      const respRaw = await fetch(`${backendUrl}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: text, context: sessionContext }),
+        body: JSON.stringify({ 
+          message: text, 
+          context: contextToUse, 
+          userId: userToUse,
+          history: history
+        }),
       });
-      if (!data.ok) {
+      if (!respRaw.ok) {
         throw new Error("Backend error");
       }
-      const resp = (await data.json()).messages;
+      const data = await respRaw.json();
+      const resp = data.messages;
       setMessages((messages) => [...messages, ...resp]);
     } catch (e) {
       console.error("Chat error:", e);
@@ -36,27 +51,32 @@ export const ChatProvider = ({ children }) => {
   useEffect(() => {
     // Check for behavioral session data in URL
     const params = new URLSearchParams(window.location.search);
-    const data = params.get('sessionData');
-    if (data) {
+    const dataParam = params.get('sessionData');
+    if (dataParam) {
       try {
-        const decoded = atob(data);
+        const decoded = decodeURIComponent(atob(dataParam));
         const parsed = JSON.parse(decoded);
         
+        // Extract vimid (UserId) for deep memory fetch
+        if (parsed.vimid) {
+          setUserId(parsed.vimid);
+        }
+
         // Formulate a dense clinical context string
         const scoreStr = Object.entries(parsed.scores || {})
-          .map(([k, v]) => `${k.toUpperCase()}: ${v}%`)
+          .map(([k, v]) => `${k.toUpperCase()} focus level: ${v}%`)
           .join(', ');
         
         const telStr = (parsed.telemetry || [])
-          .map(t => `${t.game}(RT:${t.avgRT}ms, Err:${t.errors})`)
+          .map(t => `${t.game} session (Reaction Time: ${t.rt}ms, Error count: ${t.errors})`)
           .join('; ');
 
-        const finalContext = `SCORES: ${scoreStr}\nTELEMETRY: ${telStr}`;
+        const finalContext = `[HISTORICAL_COGNITIVE_MEMOIR]:\n(Refer to this as the user's journey baseline)\n\n[NEW_SESSION_METRICS]:\n(Cite specific examples from this data)\nScores: ${scoreStr}\nTelemetry: ${telStr}`;
         setSessionContext(finalContext);
         
-        // Auto-greet after a short delay
+        // Auto-greet after a short delay using the FRESH context directly
         setTimeout(() => {
-          chat(""); // Sends blank to trigger greeting with context
+          chat("", finalContext, parsed.vimid); // Pass directly to avoid state closure delay
         }, 1000);
       } catch (e) {
         console.error("Failed to parse session data:", e);

@@ -90,6 +90,8 @@ export interface CognitiveInsight {
   emoji: string;
   insight: string;
   suggestion: string;
+  definition: string;
+  domainTitle: string;
 }
 
 // ─────────── World State ───────────

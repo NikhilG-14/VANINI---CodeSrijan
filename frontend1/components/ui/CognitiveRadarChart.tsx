@@ -24,7 +24,7 @@ export function CognitiveRadarChart({ insights, size = 280 }: Props) {
     ctx.scale(dpr, dpr);
 
     const cx = size / 2, cy = size / 2;
-    const r  = size * 0.28; // Reduced to give more room for labels
+    const r  = size * 0.28; 
     const n  = insights.length;
     const angle = (i: number) => (i / n) * Math.PI * 2 - Math.PI / 2;
 
@@ -70,7 +70,7 @@ export function CognitiveRadarChart({ insights, size = 280 }: Props) {
         ctx.stroke();
       }
 
-      // Data polygon with animation progress
+      // Data polygon
       const pts = insights.map((ins, i) => {
         const a = angle(i), rr = ((ins.score * progress) / 100) * r;
         return { x: cx + rr * Math.cos(a), y: cy + rr * Math.sin(a) };
@@ -78,7 +78,7 @@ export function CognitiveRadarChart({ insights, size = 280 }: Props) {
 
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
       grad.addColorStop(0, 'rgba(124,58,237,0.5)'); 
-      grad.addColorStop(1, 'rgba(124,58,237,0.05)');
+      grad.addColorStop(1, 'rgba(124,58,237,0.1)');
 
       ctx.beginPath();
       pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
@@ -95,7 +95,7 @@ export function CognitiveRadarChart({ insights, size = 280 }: Props) {
         ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
         ctx.fillStyle = insights[i].color;
         ctx.fill();
-        ctx.strokeStyle = '#060a14';
+        ctx.strokeStyle = '#030712';
         ctx.lineWidth = 1.5;
         ctx.stroke();
       });
@@ -104,27 +104,25 @@ export function CognitiveRadarChart({ insights, size = 280 }: Props) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       insights.forEach((ins, i) => {
-        const a = angle(i), lr = r + 45; // More distance for label text
+        const a = angle(i), lr = r + 55;
         const lx = cx + lr * Math.cos(a);
         const ly = cy + lr * Math.sin(a);
         
-        // Emoji
-        ctx.font = '16px serif';
-        ctx.fillText(ins.emoji, lx, ly - 14);
+        const labelMap: Record<string, string> = {
+          attention: 'ATTENTION',
+          memory: 'MEMORY',
+          risk_behavior: 'RISK',
+          impulsivity: 'IMPULSE',
+          flexibility: 'FLEX',
+        };
         
-        // Score
-        ctx.font = 'bold 12px Inter, system-ui';
-        ctx.fillStyle = 'rgba(255,255,255,1)';
-        ctx.fillText(`${ins.score}%`, lx, ly + 2);
-        
-        // Game Name
-        ctx.font = 'bold 9px Inter, system-ui'; 
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillText(ins.gameName?.toUpperCase() || '', lx, ly + 14);
+        ctx.font = '900 10px Inter, system-ui';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillText(labelMap[ins.cognitive] || ins.cognitive.toUpperCase(), lx, ly);
       });
 
       if (progress < 1) {
-        progress += 0.02; // Animation speed
+        progress += 0.05;
         animationId = requestAnimationFrame(draw);
       }
     };
@@ -137,7 +135,7 @@ export function CognitiveRadarChart({ insights, size = 280 }: Props) {
     <canvas
       ref={canvasRef}
       style={{ width: size, height: size }}
-      className="drop-shadow-[0_0_24px_rgba(124,58,237,0.4)]"
+      className="drop-shadow-[0_0_40px_rgba(124,58,237,0.2)]"
     />
   );
 }

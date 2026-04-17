@@ -460,4 +460,73 @@ async def get_user_dossier_endpoint(user_id: str):
         }))
     except Exception as e:
         logger.error(f"Error in get_user_dossier_endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving dossier: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/memoir/{user_id}")
+async def get_memoir_endpoint(user_id: str):
+    """Retrieve the evolving Master Memoir for a user."""
+    try:
+        from ai_backend.db import get_user_memoir
+        memoir = get_user_memoir(user_id)
+        return JSONResponse(content=serialize_db_data(memoir or {"master_summary": "Initial exploration in progress...", "session_count": 0}))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/user/memoir/save")
+async def save_memoir_endpoint(data: dict):
+    """Update the cumulative Master Memoir."""
+    try:
+        from ai_backend.db import upsert_user_memoir
+        user_id = data.get("user_id")
+        summary = data.get("master_summary")
+        if upsert_user_memoir(user_id, summary):
+            return {"status": "success"}
+        raise Exception("Failed to save memoir")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/session/report/save")
+async def save_session_report_endpoint(data: dict):
+    """Save a formal cognitive analysis report linked to a session."""
+    try:
+        from ai_backend.db import save_cognitive_report
+        session_id = data.get("session_id")
+        user_id = data.get("user_id")
+        scores = data.get("scores")
+        finding = data.get("ai_finding")
+        rid = save_cognitive_report(session_id, user_id, scores, finding)
+        if rid: return {"status": "success", "report_id": rid}
+        raise Exception("Failed to save report")
+    except Exception as e:
+        logger.error(f"Error in save_session_report_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/session/reports/{user_id}")
+async def get_user_cognitive_reports_endpoint(user_id: str):
+    """Retrieve all formal cognitive analysis reports for a user."""
+    try:
+        conn = get_db_connection()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, session_id, user_id, scores_summary, ai_finding, created_at
+                FROM cognitive_reports
+                WHERE user_id = %s
+                ORDER BY created_at DESC;
+            """, (user_id,))
+            return JSONResponse(content=serialize_db_data(cur.fetchall()))
+    except Exception as e:
+        logger.error(f"Error in get_user_cognitive_reports_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/admin/migrate")
+async def trigger_migration_endpoint():
+    """Administrative endpoint to trigger data migration from Neon to Aiven."""
+    try:
+        from ai_backend.db import migrate_from_old_db
+        results = migrate_from_old_db()
+        if results:
+            return {"status": "success", "migrated_counts": results}
+        return {"status": "error", "message": "Migration failed or unnecessary (check logs)"}
+    except Exception as e:
+        logger.error(f"Error triggering migration: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
