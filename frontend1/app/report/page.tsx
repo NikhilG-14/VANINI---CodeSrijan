@@ -91,16 +91,26 @@ export default function ReportPage() {
     : null;
 
   const handleConsultVani = useCallback(() => {
+    // Extract a high-fidelity telemetry summary for VANI
+    const telemetry = results.map(r => ({
+      game: r.gameId,
+      avgRT: r.reactionTimeMs.length ? Math.round(r.reactionTimeMs.reduce((a, b) => a + b, 0) / r.reactionTimeMs.length) : 0,
+      errors: r.errorCount,
+      totalTrials: r.totalActions,
+      specifics: r.rawData 
+    }));
+
     // Unicode-safe Base64 encoding for payloads with emojis
     const json = JSON.stringify({
       scores: computed,
-      insights: insights.slice(0, 3)
+      insights: insights.slice(0, 3),
+      telemetry
     });
     const payload = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (match, p1) => 
       String.fromCharCode(parseInt(p1, 16))
     ));
     window.open(`http://localhost:5173/?sessionData=${payload}`, '_blank');
-  }, [computed, insights]);
+  }, [computed, insights, results]);
 
   if (!computed || !insights.length) {
     return (
@@ -130,13 +140,13 @@ export default function ReportPage() {
         >
           <div className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 mb-8 neon-glow-cyan">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399] animate-pulse" />
-            Vocal Profile Verified
+            Emotional State Synced
           </div>
           <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-6">
-            Cognitive <span className="text-gradient">Signature</span>
+            Emotional <span className="text-gradient">Blueprint</span>
           </h1>
           <p className="text-white/40 text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-            Your behavioral patterns across {results.length} cognitive nodes have been synthesized into a unique performance dossier.
+            I've looked at how you moved and reacted today. This is a map of your emotional well-being based on those quiet patterns.
           </p>
         </motion.div>
 
@@ -151,7 +161,7 @@ export default function ReportPage() {
             <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             <div className="relative z-10 w-full flex flex-col items-center">
                <CognitiveRadarChart insights={insights} size={450} />
-               <div className="mt-4 text-[10px] font-black text-white/20 uppercase tracking-[0.5em] animate-pulse">Neural Mapping Active</div>
+               <div className="mt-4 text-[10px] font-black text-white/20 uppercase tracking-[0.5em] animate-pulse">Emotional Rhythm Detected</div>
             </div>
           </motion.div>
 
@@ -205,11 +215,11 @@ export default function ReportPage() {
           </div>
         </div>
 
-        {/* The Science: Metrics Breakdown */}
+        {/* Your Emotional Blueprint: Metrics Breakdown */}
         <section className="space-y-12">
           <div className="flex flex-col gap-4">
-            <h2 className="text-4xl font-black text-white tracking-tight">The <span className="text-gradient">Science</span> of You</h2>
-            <p className="text-white/40 font-medium">Behind every score is a stream of sub-second decisions and automatic responses.</p>
+            <h2 className="text-4xl font-black text-white tracking-tight">Your <span className="text-gradient">Emotional</span> Spectrum</h2>
+            <p className="text-white/40 font-medium">Every reaction tells a story about how your mind and heart are working together right now.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

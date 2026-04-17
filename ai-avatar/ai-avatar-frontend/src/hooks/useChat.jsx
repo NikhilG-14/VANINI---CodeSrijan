@@ -41,11 +41,18 @@ export const ChatProvider = ({ children }) => {
       try {
         const decoded = atob(data);
         const parsed = JSON.parse(decoded);
-        const contextStr = Object.entries(parsed.scores)
-          .map(([k, v]) => `${k}: ${v}%`)
+        
+        // Formulate a dense clinical context string
+        const scoreStr = Object.entries(parsed.scores || {})
+          .map(([k, v]) => `${k.toUpperCase()}: ${v}%`)
           .join(', ');
         
-        setSessionContext(contextStr);
+        const telStr = (parsed.telemetry || [])
+          .map(t => `${t.game}(RT:${t.avgRT}ms, Err:${t.errors})`)
+          .join('; ');
+
+        const finalContext = `SCORES: ${scoreStr}\nTELEMETRY: ${telStr}`;
+        setSessionContext(finalContext);
         
         // Auto-greet after a short delay
         setTimeout(() => {

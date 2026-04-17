@@ -121,11 +121,11 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
 }
 
 const META: Record<CognitiveKey, { label: string; color: string; emoji: string }> = {
-  attention:      { label: 'Selective Attention', color: '#3b82f6', emoji: '🎯' },
-  memory:         { label: 'Working Memory',      color: '#8b5cf6', emoji: '🧠' },
-  impulsivity:    { label: 'Impulsivity Index',   color: '#ef4444', emoji: '⚡' },
-  flexibility:    { label: 'Cognitive Flex',      color: '#10b981', emoji: '🧩' },
-  risk_behavior:  { label: 'Risk Propensity',     color: '#f59e0b', emoji: '🎈' },
+  attention:      { label: 'Emotional Focus',   color: '#3b82f6', emoji: '🎯' },
+  memory:         { label: 'Mental Capacity',    color: '#8b5cf6', emoji: '🧠' },
+  impulsivity:    { label: 'Emotional Balance', color: '#ef4444', emoji: '⚡' },
+  flexibility:    { label: 'Adaptability',      color: '#10b981', emoji: '🧩' },
+  risk_behavior:  { label: 'Confidence Index',  color: '#f59e0b', emoji: '🎈' },
 };
 
 type Level = 'high' | 'moderate' | 'low';
@@ -138,12 +138,12 @@ function level(s: number): Level {
 // ── Extended, session-specific insight text ───────────────────────────────────
 const INSIGHTS: Record<CognitiveKey, Record<Level, { insight: string; suggestion: string }>> = {
   attention: {
-    high:     { insight: 'Excellent selective attention. You maintained focus through heavy interference with minimal reaction time cost on incongruent trials.', suggestion: 'Your focused state is an asset — use deep work blocks of 90+ minutes to harness it.' },
+    high:     { insight: 'You showed remarkable emotional focus today. Even under pressure, you stayed centered and reacted with clarity.', suggestion: 'Your ability to stay focused is a gift. Perhaps take a moment to appreciate this quiet strength today?' },
     moderate: { insight: 'Moderate susceptibility to cognitive interference. You slowed down on color-word conflicts but recovered well.', suggestion: 'Practice the "name the color, ignore the word" drill daily — it trains top-down inhibitory control.' },
     low:      { insight: 'High interference detected. The incongruent Stroop trials caused notable accuracy drops and reaction delays, indicating automatic reading processes are dominating.', suggestion: 'Reduce information overload in your workspace. Single-tasking and eliminating visual noise are key first steps.' },
   },
   memory: {
-    high:     { insight: 'Strong working memory performance. You correctly identified matches 2-back while rejecting false matches with low error rate.', suggestion: 'Push further with 3-back tasks. Your capacity supports multi-layer problem solving.' },
+    high:     { insight: 'Your mental capacity is vibrant and strong. You handled multiple streams of information with ease.', suggestion: 'You have a great ability to hold things together. Don\'t forget to give your mind a little space too.' },
     moderate: { insight: 'Solid working memory with some false alarm responses — a classic trade-off when speed is prioritized over accuracy.', suggestion: 'Use chunking strategies (grouping information into 3-4 item clusters) to reduce working memory load in daily tasks.' },
     low:      { insight: 'Working memory was strained — difficulty holding the N-back window led to misses and false alarms. This often correlates with high cognitive fatigue.', suggestion: 'Take recovery breaks every 25 minutes. Sleep is the single biggest working memory restorer.' },
   },
@@ -176,16 +176,12 @@ export function getCognitiveInsights(scores: CognitiveScores): CognitiveInsight[
 
 export function getAvatarMessage(scores: CognitiveScores): string {
   // Pick the single most notable finding
-  if (scores.impulsivity > 70)
-    return "Your inhibitory control data is striking — you responded to No-Go stimuli significantly more than expected. This pattern often means your brain is optimizing for speed over caution, which can be an asset but also a liability under pressure. Let's talk about this.";
-  if (scores.risk_behavior > 75)
-    return "You pushed the balloon far past the expected burst point — repeatedly. This risk-seeking signature in a controlled environment is worth exploring. Are you chasing rewards in areas of your life that may not justify the cost?";
   if (scores.attention < 35)
-    return "The Stroop interference hit you harder than average — your reaction times on conflicting trials were substantially slower than on congruent ones. That gap is a window into how much mental bandwidth is being consumed right now.";
-  if (scores.flexibility < 35)
-    return "The rule-shift task showed you continuing to apply old strategies even after the feedback turned negative — a classic perseveration marker. This isn't a flaw; it's a signal that your system is running on ingrained patterns. Let's explore why.";
+    return "I noticed the conflict tasks were quite taxing for you today. It felt like your mind was working double-time just to stay on track. How has your stress been lately?";
   if (scores.memory < 35)
-    return "Your 2-back performance tells me your working memory buffer is under load. The sequence errors and false alarms suggest you're tracking well but slipping under sustained demand — a very common profile for cognitive overload.";
+    return "You seemed a bit overwhelmed by the memory sequence. It's perfectly okay—sometimes our minds just need a rest. Did you sleep well last night?";
+  if (scores.impulsivity > 70)
+    return "I saw you reacting very quickly, almost before your mind could choose. Are you feeling a bit anxious or rushed today?";
 
   const dominant = (Object.keys(scores) as CognitiveKey[])
     .reduce((a, b) => scores[a] > scores[b] ? a : b);

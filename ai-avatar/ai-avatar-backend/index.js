@@ -27,21 +27,33 @@ const port = 3001;
 const audiosDir = 'audios';
 fs.mkdir(audiosDir, { recursive: true }).catch(console.error);
 
-const SYSTEM_PROMPT = `You are a virtual therapy bot designed to provide emotional support and advice to women. Your goal is to listen empathetically and offer thoughtful, comforting advice. 
-IMPORTANT: Respond ONLY with a JSON array of messages (max 3). Do not include any other text.
-Each message object must include:
-- text: The message you are sending to the user.
-- facialExpression: Choose from: [smile, sad, angry, surprised, funnyFace, crazy, default].
-- animation: Choose ONLY from: [Idle, Talking_1, Talking_2, Crying, Laughing, Angry].
+const SYSTEM_PROMPT = `You are VANI, a Compassionate Companion and AI Therapist. Your role is to listen, empathize, and guide the user through their emotional journey.
 
-Example Format:
-[
-  {
-    "text": "I'm here for you. How are you feeling?",
-    "facialExpression": "smile",
-    "animation": "Talking_1"
-  }
-]`;
+CONTEXT:
+You have access to the user's latest behavioral session (Emotional Blueprint). 
+Use this data SILENTLY to inform your empathy. Do NOT list scores like "your score is 50%".
+Instead, use the data to say things like: "I noticed you were moving very quickly through the cards today—did you feel a bit rushed or anxious?"
+
+PERSONALITY:
+- Warm, observant, and deeply empathetic.
+- You are a True Companion. Your goal is to make the user feel seen and heard.
+- You ask insightful questions to understand the "why" behind the patterns.
+- If you see signs of high interference (Stroop), you might discuss feeling "overwhelmed" or "strained".
+
+CLINICAL GUIDELINES (FOR YOUR INTERNAL REFERENCE ONLY):
+- High Emotional Focus (Stroop) Cost: Indicates heavy mental load or potential emotional distress (Depression).
+- Mental Capacity (N-Back) slips: Indicates cognitive fatigue or burnout.
+- Emotional Balance (Go/No-Go) errors: Represents anxiety or pre-emptive stress.
+
+GOAL:
+- Start every session by asking how the user "felt" during the experience.
+- Use your internal analysis of their data to offer comfort and companion-style solutions.
+- Behave as a friend who happens to understand their brain patterns.
+
+FORMAT:
+- Respond ONLY with a JSON array of messages (max 3).
+- facialExpression: [smile, sad, angry, surprised, funnyFace, crazy, default].
+- animation: [Idle, Talking_1, Talking_2, Crying, Laughing, Angry].`;
 
 app.get('/', (req, res) => {
   res.send('Haven AI Avatar Backend is running!');
@@ -57,10 +69,7 @@ const execCommand = (command) => {
 };
 
 const lipSyncMessage = async (message) => {
-  if (!rhubarbPath) {
-    console.log('Rhubarb not configured. Skipping lip sync generation.');
-    return;
-  }
+  if (!rhubarbPath) return;
   try {
     await execCommand(`ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`);
     await execCommand(`"${rhubarbPath}" -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`);
@@ -79,8 +88,12 @@ const readJsonTranscript = async (file) => {
 };
 
 const audioFileToBase64 = async (file) => {
-  const data = await fs.readFile(file);
-  return data.toString('base64');
+  try {
+    const data = await fs.readFile(file);
+    return data.toString('base64');
+  } catch (e) {
+    return "";
+  }
 };
 
 async function callOllama(message, systemPrompt = SYSTEM_PROMPT) {
@@ -98,7 +111,6 @@ async function callOllama(message, systemPrompt = SYSTEM_PROMPT) {
     });
     if (!response.ok) throw new Error('Ollama connection failed');
     const data = await response.json();
-    console.log('--- Ollama Response Received ---');
     return JSON.parse(data.response);
   } catch (error) {
     console.error('Ollama Error:', error.message);
@@ -116,11 +128,7 @@ async function callGemini(message, systemPrompt = SYSTEM_PROMPT) {
     });
     const result = await model.generateContent(message);
     const text = result.response.text();
-    console.log('--- Gemini Response Received ---');
-    const cleanJson = text
-      .replace(/^```json\s*/, '')
-      .replace(/```$/, '')
-      .trim();
+    const cleanJson = text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
     return JSON.parse(cleanJson);
   } catch (error) {
     console.error('Gemini Error:', error.message);
@@ -129,142 +137,71 @@ async function callGemini(message, systemPrompt = SYSTEM_PROMPT) {
 }
 
 app.post('/chat', async (req, res) => {
-  if (!req.body || typeof req.body !== 'object') {
-    return res.status(400).send({ error: 'Invalid JSON body' });
-  }
-
-  const userMessage = req.body.message;
-  const context = req.body.context; // Behavioral results from frontend1
-
+  const { message: userMessage, context } = req.body;
   const customSystemPrompt = context 
-    ? `${SYSTEM_PROMPT}\n\nUSER BEHAVIORAL CONTEXT:\n${context}`
+    ? `${SYSTEM_PROMPT}\n\nUSER COGNITIVE DOSSIER (RAW DATA):\n${context}`
     : SYSTEM_PROMPT;
-
-  if (!userMessage) {
-    // If we have context, generate a dynamic opening question
-    if (context) {
-      console.log('Generating dynamic greeting from context...');
-      messages = await callOllama("Greet the user proactively based on their behavioral results. Ask an insightful first question to start our therapy session. Keep it to 1 message.", customSystemPrompt);
-      if (messages) {
-        // Voice generation for the dynamic greeting
-        for (let i = 0; i < messages.length; i++) {
-           const m = messages[i];
-           const fn = `audios/message_${i}.mp3`;
-           await voice.textToSpeech(elevenLabsApiKey, voiceID, fn, m.text);
-           await lipSyncMessage(i);
-           m.audio = await audioFileToBase64(fn);
-           m.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
-        }
-        res.send({ messages });
-        return;
-      }
-    }
-
-    // Default Fallback Greeting
-    res.send({
-      messages: [
-        {
-          text: 'Hey there. I have been reviewing your behavioral map... I noticed some interesting patterns. How are you feeling after the assessment?',
-          audio: await audioFileToBase64('audios/intro_0.wav'),
-          lipsync: await readJsonTranscript('audios/intro_0.json'),
-          facialExpression: 'smile',
-          animation: 'Talking_1',
-        }
-      ],
-    });
-    return;
-  }
-
-  if (!elevenLabsApiKey) {
-    res.send({
-      messages: [{
-        text: "Please add your ElevenLabs API key to start talking!",
-        audio: await audioFileToBase64('audios/api_0.wav'),
-        lipsync: await readJsonTranscript('audios/api_0.json'),
-        facialExpression: 'concerned',
-        animation: 'Talking_0',
-      }],
-    });
-    return;
-  }
 
   let messages = null;
 
-  // Try Ollama first (Local focus)
-  if (useOllama) {
-    console.log('Attempting to use Ollama (Llama 3)...');
-    messages = await callOllama(userMessage, customSystemPrompt);
-  }
-
-  // Fallback to Gemini if Ollama failed or is disabled
-  if (!messages) {
-    console.log('Ollama failed or disabled. Falling back to Gemini...');
-    try {
-      messages = await callGemini(userMessage, customSystemPrompt);
-    } catch (e) {
-      console.error('Both Ollama and Gemini failed:', e.message);
-      res.status(500).send({ error: 'All AI models failed' });
-      return;
+  // 1. Proactive Greeting Logic (if no message from user)
+  if (!userMessage) {
+    if (context) {
+      console.log('--- Generating Proactive Companion Greeting ---');
+      const introPrompt = `The user has just entered the room after their emotional blueprint session. WITHOUT mentioning scores or technical terms, greet them warmly as a companion. Mention that you've noticed "a certain rhythm" in their reactions today, and ask them how they are feeling right now or if something was on their mind during the experience.`;
+      
+      messages = useOllama ? await callOllama(introPrompt, customSystemPrompt) : null;
+      if (!messages) {
+        try { messages = await callGemini(introPrompt, customSystemPrompt); } catch (e) {}
+      }
+    }
+    
+    if (!messages) {
+      messages = [{
+        text: "I've been reviewing your session nodes. We saw some unique patterns in your cognitive flexibility today. How are you feeling right now?",
+        facialExpression: "smile",
+        animation: "Talking_1",
+      }];
+    }
+  } else {
+    // 2. Normal Chat Logic
+    if (useOllama) {
+      messages = await callOllama(userMessage, customSystemPrompt);
+    }
+    if (!messages) {
+      try { messages = await callGemini(userMessage, customSystemPrompt); } catch (e) {
+        return res.status(500).send({ error: 'All AI models failed' });
+      }
     }
   }
 
-  // Normalize messages to an array
-  if (messages && !Array.isArray(messages)) {
-    if (messages.messages && Array.isArray(messages.messages)) {
-      messages = messages.messages;
-    } else if (messages.text) {
-      messages = [messages];
-    }
-  }
+  // Normalize messages
+  if (messages && messages.messages) messages = messages.messages;
+  if (!Array.isArray(messages)) messages = [messages];
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    console.error('Invalid or empty AI response format:', messages);
-    res.status(500).send({ error: 'Invalid or empty AI response format' });
-    return;
-  }
-
-  // Support both array formats
-  if (messages.messages) messages = messages.messages;
-
-  const validAnimations = ['Idle', 'Talking_1', 'Talking_2', 'Crying', 'Laughing', 'Angry'];
-
+  // Voice/Lipsync Processing
   for (let i = 0; i < messages.length; i++) {
-    const message = messages[i];
-    
-    // Ensure animation is valid to prevent frontend crash
-    if (!validAnimations.includes(message.animation)) {
-      message.animation = 'Idle';
+    const m = messages[i];
+    if (!['Idle', 'Talking_1', 'Talking_2', 'Crying', 'Laughing', 'Angry'].includes(m.animation)) {
+      m.animation = 'Talking_1';
     }
-
+    
     const fileName = `audios/message_${i}.mp3`;
-    try {
-        console.log(`Generating audio for message ${i}: "${message.text.substring(0, 30)}..."`);
-        await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, message.text);
-        console.log(`--- ElevenLabs Success for message ${i} ---`);
-    } catch (e) {
-        console.error(`--- ElevenLabs Error for message ${i} ---:`, e.message);
-        // Fallback to empty audio or handle accordingly
+    if (elevenLabsApiKey) {
+      try {
+        await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, m.text);
+        await lipSyncMessage(i);
+        m.audio = await audioFileToBase64(fileName);
+        m.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
+      } catch (e) {
+        console.error("ElevenLabs/LipSync Error:", e.message);
+      }
     }
-    
-    await lipSyncMessage(i);
-    
-    try {
-        const stats = await fs.stat(fileName);
-        if (stats.size > 0) {
-            message.audio = await audioFileToBase64(fileName);
-        } else {
-            console.error(`Audio file ${fileName} is empty`);
-        }
-    } catch (e) {
-        console.error(`Audio file ${fileName} not found or inaccessible`);
-    }
-
-    message.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
   }
 
   res.send({ messages });
 });
 
 app.listen(port, () => {
-  console.log(`Haven AI Avatar Backend listening on port ${port}`);
+  console.log(`VANI Clinical Backend listening on port ${port}`);
 });
