@@ -24,12 +24,12 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
 
   const [deckCard, setDeckCard] = useState<Card | null>(null);
   const [baseCards, setBaseCards] = useState<Card[]>([]);
-  
+
   const [currentRuleIndex, setCurrentRuleIndex] = useState(0);
   const [correctStreak, setCorrectStreak] = useState(0);
-  
+
   const trials = useRef(0);
-  const perseverativeErrors = useRef(0); 
+  const perseverativeErrors = useRef(0);
   const reactionTimes = useRef<number[]>([]);
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
 
@@ -178,7 +178,7 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
             <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-md text-center space-y-6 mt-10">
               <div className="text-5xl">{assignment.theme.emoji}</div>
               <h3 className="text-2xl font-bold">Rule Adaptation Test</h3>
-              <p className="text-white/70">Match the bottom card to one of the four top columns. The matching rule is secret. Figuring it out is part of the challenge. <br/><br/><span className="text-emerald-400 font-bold">The rule will change as you progress!</span></p>
+              <p className="text-white/70">Match the bottom card to one of the four top columns. The matching rule is secret. Figuring it out is part of the challenge. <br /><br /><span className="text-emerald-400 font-bold">The rule will change as you progress!</span></p>
               <button onClick={startGame} className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold transition-all text-shadow">
                 Start Challenge
               </button>
@@ -186,41 +186,41 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
           )}
 
           {phase === 'playing' && (
-             <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between py-10">
-               <div className="h-8 absolute top-8">
-                  {showFeedback && (
-                    <div className={`text-2xl font-black ${showFeedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
-                      {showFeedback === 'correct' ? 'CORRECT MATCH' : 'WRONG MATCH'}
-                    </div>
-                  )}
-               </div>
+            <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between py-10">
+              <div className="h-8 absolute top-8">
+                {showFeedback && (
+                  <div className={`text-2xl font-black ${showFeedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
+                    {showFeedback === 'correct' ? 'CORRECT MATCH' : 'WRONG MATCH'}
+                  </div>
+                )}
+              </div>
 
-               <div className="flex justify-center gap-4 sm:gap-8 w-full mt-10">
-                 {baseCards.map((bc, idx) => (
-                   <button 
+              <div className="flex justify-center gap-4 sm:gap-8 w-full mt-10">
+                {baseCards.map((bc, idx) => (
+                  <button
                     key={idx}
                     onClick={() => handleDrop(bc)}
                     className="w-20 h-28 sm:w-28 sm:h-40 bg-white/10 rounded-xl border border-white/20 flex items-center justify-center cursor-pointer hover:bg-white/20 hover:scale-105 transition-all shadow-lg"
-                   >
-                     {renderCardBody(bc)}
-                   </button>
-                 ))}
-               </div>
+                  >
+                    {renderCardBody(bc)}
+                  </button>
+                ))}
+              </div>
 
-               <div className="mt-12 flex flex-col items-center">
-                 <div className="text-sm text-white/50 mb-4 font-bold uppercase tracking-widest">Tap column to match</div>
-                 {deckCard && (
-                    <motion.div 
-                      key={trials.current}
-                      initial={{ y: 50, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      className="w-24 h-32 sm:w-32 sm:h-44 bg-white/10 rounded-xl border-2 border-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-                    >
-                      {renderCardBody(deckCard)}
-                    </motion.div>
-                 )}
-               </div>
-             </motion.div>
+              <div className="mt-12 flex flex-col items-center">
+                <div className="text-sm text-white/50 mb-4 font-bold uppercase tracking-widest">Tap column to match</div>
+                {deckCard && (
+                  <motion.div
+                    key={trials.current}
+                    initial={{ y: 50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="w-24 h-32 sm:w-32 sm:h-44 bg-white/10 rounded-xl border-2 border-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                  >
+                    {renderCardBody(deckCard)}
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
           )}
 
           {phase === 'outro' && (

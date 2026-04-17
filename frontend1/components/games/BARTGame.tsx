@@ -18,7 +18,7 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
   // States for UI
   const [totalScore, setTotalScore] = useState(0);
   const [currentPumps, setCurrentPumps] = useState(0);
-  
+
   // Refs for stable telemetry and interval closures
   const totalScoreRef = useRef(0);
   const poppedCount = useRef(0);
@@ -29,7 +29,7 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
   const [balloonStatus, setBalloonStatus] = useState<'normal' | 'popped' | 'saved'>('normal');
 
   // Probability of pop increases with each pump.
-  const popThreshold = useRef(Math.random() * 20 + 5); 
+  const popThreshold = useRef(Math.random() * 20 + 5);
   const stimulusStartTime = useRef(0);
 
   useEffect(() => {
@@ -56,22 +56,22 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
     setBalloonStatus('normal');
     // Difficulty Scaling: Base range 5-25, shrinks as totalScore increases
     const difficultyOffset = Math.min(10, Math.floor(totalScoreRef.current / 20));
-    popThreshold.current = Math.random() * (20 - difficultyOffset) + 5; 
+    popThreshold.current = Math.random() * (20 - difficultyOffset) + 5;
     stimulusStartTime.current = Date.now();
   };
 
   const handlePump = () => {
     if (balloonStatus !== 'normal') return;
-    
+
     const newPumps = currentPumps + 1;
     setCurrentPumps(newPumps);
     sounds.playTick();
-    
+
     // Capture inter-pump RT
     const rt = Date.now() - stimulusStartTime.current;
     reactionTimes.current.push(rt);
     stimulusStartTime.current = Date.now(); // reset for next pump
-    
+
     // Check for pop
     if (newPumps >= popThreshold.current) {
       setBalloonStatus('popped');
@@ -85,26 +85,26 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
 
   const handleCollect = () => {
     if (balloonStatus !== 'normal' || currentPumps === 0) return;
-    
+
     setBalloonStatus('saved');
     sounds.playSuccess();
-    
+
     const gained = currentPumps;
     totalScoreRef.current += gained;
     setTotalScore(totalScoreRef.current);
-    
+
     trials.current++;
     pumpHistory.current.push(currentPumps);
-    
+
     setTimeout(resetBalloon, 1000);
   };
 
   const endGame = () => {
     setPhase('outro');
-    
+
     setTimeout(() => {
-      const avgPumps = pumpHistory.current.length > 0 
-        ? pumpHistory.current.reduce((a,b)=>a+b,0) / pumpHistory.current.length 
+      const avgPumps = pumpHistory.current.length > 0
+        ? pumpHistory.current.reduce((a, b) => a + b, 0) / pumpHistory.current.length
         : 0;
 
       onComplete({
@@ -166,50 +166,50 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
           )}
 
           {phase === 'playing' && (
-             <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between pb-10">
-               
-               <div className="text-center space-y-2 mt-4">
-                  <div className="text-4xl font-black text-amber-400">{currentPumps}</div>
-                  <div className="text-sm uppercase tracking-widest text-white/50">Current Pumps</div>
-               </div>
+            <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between pb-10">
 
-               <div className="flex-1 flex items-center justify-center relative w-full h-[300px]">
-                  {balloonStatus === 'normal' && (
-                    <motion.div 
-                      key="balloon"
-                      animate={{ scale: 1 + (currentPumps * 0.05) }}
-                      className="w-20 h-24 bg-gradient-to-br from-red-400 to-red-600 rounded-t-[50%] rounded-b-[40%] shadow-[0_0_40px_rgba(239,68,68,0.4)] border border-red-300/50"
-                      style={{ originY: 1 }}
-                    >
-                      <div className="absolute top-[100%] left-1/2 w-[2px] h-20 bg-white/30 transform -translate-x-1/2" />
-                    </motion.div>
-                  )}
-                  {balloonStatus === 'popped' && (
-                    <div className="text-7xl font-black text-red-500 animate-ping">POP!</div>
-                  )}
-                  {balloonStatus === 'saved' && (
-                    <div className="text-4xl font-black text-green-400 drop-shadow-[0_0_20px_rgba(74,222,128,0.5)]">+{currentPumps} SAVED!</div>
-                  )}
-               </div>
+              <div className="text-center space-y-2 mt-4">
+                <div className="text-4xl font-black text-amber-400">{currentPumps}</div>
+                <div className="text-sm uppercase tracking-widest text-white/50">Current Pumps</div>
+              </div>
 
-               <div className="flex gap-4 w-full max-w-sm">
-                 <button 
+              <div className="flex-1 flex items-center justify-center relative w-full h-[300px]">
+                {balloonStatus === 'normal' && (
+                  <motion.div
+                    key="balloon"
+                    animate={{ scale: 1 + (currentPumps * 0.05) }}
+                    className="w-20 h-24 bg-gradient-to-br from-red-400 to-red-600 rounded-t-[50%] rounded-b-[40%] shadow-[0_0_40px_rgba(239,68,68,0.4)] border border-red-300/50"
+                    style={{ originY: 1 }}
+                  >
+                    <div className="absolute top-[100%] left-1/2 w-[2px] h-20 bg-white/30 transform -translate-x-1/2" />
+                  </motion.div>
+                )}
+                {balloonStatus === 'popped' && (
+                  <div className="text-7xl font-black text-red-500 animate-ping">POP!</div>
+                )}
+                {balloonStatus === 'saved' && (
+                  <div className="text-4xl font-black text-green-400 drop-shadow-[0_0_20px_rgba(74,222,128,0.5)]">+{currentPumps} SAVED!</div>
+                )}
+              </div>
+
+              <div className="flex gap-4 w-full max-w-sm">
+                <button
                   onClick={handlePump}
                   disabled={balloonStatus !== 'normal'}
                   className="flex-1 py-5 rounded-2xl bg-amber-600 hover:bg-amber-500 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 font-black tracking-widest text-xl transition-all shadow-xl border-orange-500/50 border-b-4 uppercase"
-                 >
-                   PUMP
-                 </button>
-                 <button 
+                >
+                  PUMP
+                </button>
+                <button
                   onClick={handleCollect}
                   disabled={balloonStatus !== 'normal' || currentPumps === 0}
                   className="flex-1 py-5 rounded-2xl bg-green-600 hover:bg-green-500 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 font-bold tracking-widest text-lg transition-all shadow-xl border-emerald-500/50 border-b-4 uppercase"
-                 >
-                   COLLECT
-                 </button>
-               </div>
+                >
+                  COLLECT
+                </button>
+              </div>
 
-             </motion.div>
+            </motion.div>
           )}
 
           {phase === 'outro' && (

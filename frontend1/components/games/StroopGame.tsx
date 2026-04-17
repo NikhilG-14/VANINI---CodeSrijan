@@ -52,10 +52,10 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
     const wordKey = COLORS[Math.floor(Math.random() * COLORS.length)];
     const roll = Math.random();
     const congruent = roll > 0.5;
-    
+
     setIsCongruent(congruent);
     setCurrentWord(wordKey.name);
-    
+
     if (congruent) {
       setCurrentColor(wordKey.hex);
     } else {
@@ -67,10 +67,10 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
 
   const handleSelection = (hex: string) => {
     if (phase !== 'playing') return;
-    
+
     const rt = Date.now() - stimulusStartTime.current;
     trials.current++;
-    
+
     if (hex === currentColor) {
       correct.current++;
       if (isCongruent) congruentRTs.current.push(rt);
@@ -80,7 +80,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
       errors.current++;
       sounds.playError();
     }
-    
+
     generateStimulus();
   };
 
@@ -92,8 +92,8 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   const endGame = () => {
     setPhase('outro');
     setTimeout(() => {
-      const avgCon = congruentRTs.current.length ? congruentRTs.current.reduce((a,b)=>a+b,0)/congruentRTs.current.length : 0;
-      const avgIncon = incongruentRTs.current.length ? incongruentRTs.current.reduce((a,b)=>a+b,0)/incongruentRTs.current.length : 0;
+      const avgCon = congruentRTs.current.length ? congruentRTs.current.reduce((a, b) => a + b, 0) / congruentRTs.current.length : 0;
+      const avgIncon = incongruentRTs.current.length ? incongruentRTs.current.reduce((a, b) => a + b, 0) / incongruentRTs.current.length : 0;
 
       onComplete({
         cognitive: 'attention',
@@ -161,7 +161,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
 
           {phase === 'playing' && (
             <motion.div key="playing" className="absolute inset-0 flex flex-col items-center justify-center p-12">
-              <motion.div 
+              <motion.div
                 key={currentWord + currentColor}
                 initial={{ scale: 0.8, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -170,7 +170,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
               >
                 {currentWord}
               </motion.div>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl">
                 {COLORS.map(c => (
                   <button

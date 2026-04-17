@@ -13,27 +13,27 @@ interface Props {
 
 // --- Constants (edit here to tune the task) ---
 const TOTAL_DURATION_MS = 60_000;   // 60-second session
-const GO_RATIO          = 0.70;     // 70% Go trials
-const STIM_DURATION_MS  = 700;      // stimulus visible for 700 ms
-const RESPONSE_WINDOW   = 1_000;    // total window to respond (ms)
-const ISI_MIN           = 800;      // inter-stimulus interval min (ms)
-const ISI_MAX           = 1_200;    // inter-stimulus interval max (ms)
+const GO_RATIO = 0.70;     // 70% Go trials
+const STIM_DURATION_MS = 700;      // stimulus visible for 700 ms
+const RESPONSE_WINDOW = 1_000;    // total window to respond (ms)
+const ISI_MIN = 800;      // inter-stimulus interval min (ms)
+const ISI_MAX = 1_200;    // inter-stimulus interval max (ms)
 
 const AVG_CYCLE_MS = STIM_DURATION_MS + (ISI_MIN + ISI_MAX) / 2;
-const EXPECTED_TRIALS   = Math.floor(TOTAL_DURATION_MS / AVG_CYCLE_MS); // ≈ 35
+const EXPECTED_TRIALS = Math.floor(TOTAL_DURATION_MS / AVG_CYCLE_MS); // ≈ 35
 
 interface TrialRecord {
   trial: number;
   type: 'go' | 'nogo';
-  rt: number | null;          
+  rt: number | null;
   correct: boolean;
-  commission: boolean;        
-  omission: boolean;          
-  ts: number;                 
+  commission: boolean;
+  omission: boolean;
+  ts: number;
 }
 
 function buildTrials(n: number): Array<'go' | 'nogo'> {
-  const goCount   = Math.round(n * GO_RATIO);
+  const goCount = Math.round(n * GO_RATIO);
   const nogoCount = n - goCount;
   const t: Array<'go' | 'nogo'> = [
     ...Array(goCount).fill('go'),
@@ -52,21 +52,21 @@ function mean(arr: number[]) {
 
 export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
   const [phase, setPhase] = useState<'intro' | 'playing' | 'outro'>('intro');
-  const [timeLeft, setTimeLeft]   = useState(TOTAL_DURATION_MS);
-  const [target, setTarget] = useState<{ type: 'go'|'nogo', x: number, y: number } | null>(null);
-  const [showFeedback, setShowFeedback] = useState<{ type: 'correct'|'wrong', x: number, y: number } | null>(null);
+  const [timeLeft, setTimeLeft] = useState(TOTAL_DURATION_MS);
+  const [target, setTarget] = useState<{ type: 'go' | 'nogo', x: number, y: number } | null>(null);
+  const [showFeedback, setShowFeedback] = useState<{ type: 'correct' | 'wrong', x: number, y: number } | null>(null);
   const [trialDisplay, setTrialDisplay] = useState(0);
 
-  const trialsRef       = useRef<Array<'go' | 'nogo'>>([]);
-  const trialIndexRef   = useRef(0);
-  const resultsRef      = useRef<TrialRecord[]>([]);
-  const stimOnRef       = useRef(false);
-  const respondedRef    = useRef(false);
-  const stimStartRef    = useRef(0);
-  const gameStartRef    = useRef(0);
-  const stepTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clockRef        = useRef<ReturnType<typeof setInterval> | null>(null);
-  const phaseRef        = useRef<'intro' | 'playing' | 'outro'>('intro');
+  const trialsRef = useRef<Array<'go' | 'nogo'>>([]);
+  const trialIndexRef = useRef(0);
+  const resultsRef = useRef<TrialRecord[]>([]);
+  const stimOnRef = useRef(false);
+  const respondedRef = useRef(false);
+  const stimStartRef = useRef(0);
+  const gameStartRef = useRef(0);
+  const stepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseRef = useRef<'intro' | 'playing' | 'outro'>('intro');
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
@@ -84,8 +84,8 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
   const scheduleNextTrial = () => {
     if (phaseRef.current !== 'playing') return;
     if (trialIndexRef.current >= trialsRef.current.length) { endGame(); return; }
-    
-    stimOnRef.current   = false;
+
+    stimOnRef.current = false;
     respondedRef.current = false;
     setTarget(null);
 
@@ -95,13 +95,13 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
 
   const showStimulus = () => {
     if (phaseRef.current !== 'playing') return;
-    
+
     const x = 15 + Math.random() * 70;
     const y = 15 + Math.random() * 70;
     const type = trialsRef.current[trialIndexRef.current];
 
     setTarget({ type, x, y });
-    stimOnRef.current  = true;
+    stimOnRef.current = true;
     stimStartRef.current = Date.now();
 
     stepTimerRef.current = setTimeout(resolveRound, RESPONSE_WINDOW);
@@ -109,10 +109,10 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
 
   const resolveRound = () => {
     if (respondedRef.current) return;
-    
+
     const current = target;
     const type = trialsRef.current[trialIndexRef.current];
-    
+
     stimOnRef.current = false;
     setTarget(null);
 
@@ -137,7 +137,7 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
   const handleBallClick = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!stimOnRef.current || respondedRef.current || !target) return;
-    
+
     respondedRef.current = true;
     if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
 
@@ -173,10 +173,10 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
   };
 
   const startGame = () => {
-    trialsRef.current     = buildTrials(EXPECTED_TRIALS);
+    trialsRef.current = buildTrials(EXPECTED_TRIALS);
     trialIndexRef.current = 0;
-    resultsRef.current    = [];
-    gameStartRef.current  = Date.now();
+    resultsRef.current = [];
+    gameStartRef.current = Date.now();
     setTimeLeft(TOTAL_DURATION_MS);
     setTrialDisplay(0);
     setPhase('playing');
@@ -187,7 +187,7 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
     if (phaseRef.current === 'outro') return;
     setPhase('outro');
     if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
-    if (clockRef.current)    clearInterval(clockRef.current);
+    if (clockRef.current) clearInterval(clockRef.current);
 
     const records = resultsRef.current;
     const rts = records.filter(r => r.rt !== null && r.type === 'go').map(r => r.rt as number);

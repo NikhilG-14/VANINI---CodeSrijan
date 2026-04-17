@@ -21,7 +21,7 @@ export function VaniChat({ scores, insights }: Props) {
   const [isTyping, setIsTyping] = useState(false);
   const vimid = useUserStore(s => s.ensureVimid());
   const [dossier, setDossier] = useState<UserDossier | null>(null);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load history on mount
@@ -73,10 +73,10 @@ export function VaniChat({ scores, insights }: Props) {
           });
         }
       );
-      
+
       // Save assistant message to backend
       saveChatMessage(vimid, 'assistant', assistantMsg);
-      
+
     } catch (err) {
       console.error('Chat error:', err);
       setMessages(prev => {
@@ -94,7 +94,7 @@ export function VaniChat({ scores, insights }: Props) {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin scrollbar-thumb-white/10 relative">
         {dossier && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="absolute top-4 left-1/2 -translate-x-1/2 z-10"
@@ -115,11 +115,10 @@ export function VaniChat({ scores, insights }: Props) {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] px-6 py-4 rounded-xl text-sm leading-relaxed ${
-              m.role === 'user' 
-                ? 'bg-violet-600 text-white rounded-tr-none' 
+            <div className={`max-w-[80%] px-6 py-4 rounded-xl text-sm leading-relaxed ${m.role === 'user'
+                ? 'bg-violet-600 text-white rounded-tr-none'
                 : 'bg-white/5 text-white/90 border border-white/10 rounded-tl-none'
-            }`}>
+              }`}>
               {m.content}
             </div>
           </div>

@@ -27,7 +27,7 @@ const port = 3001;
 const audiosDir = 'audios';
 fs.mkdir(audiosDir, { recursive: true }).catch(console.error);
 
-const SYSTEM_PROMPT = `You are Dr. VANI, a Clinical Cognitive Specialist (MD). Your role is to analyze neuro-behavioral patterns and guide the user through therapeutic interventions.
+const SYSTEM_PROMPT = `You are VANI, a Clinical Cognitive Specialist. Your role is to analyze neuro-behavioral patterns and guide the user through therapeutic interventions.
 
 CONVERSATIONAL PROTOCOL (Strict Sequence):
 1. OBSERVATION: Cite a specific game example or historical anomaly.
@@ -179,10 +179,10 @@ app.post('/chat', async (req, res) => {
       DATA-FIRST PROTOCOL:
       1. Review the NEW_SESSION_METRICS and the HISTORICAL_COGNITIVE_MEMOIR.
       2. BEGIN your response by citing one specific observation from today's session (e.g., "I've reviewed your results, and I noticed your inhibitory control was particularly stabilized today").
-      3. Follow the DOCTOR protocol: Observation, then an Inquiry about their feelings, then your Clinical Reasoning.
+      3. Follow the CLINICIAN protocol: Observation, then an Inquiry about their feelings, then your Clinical Reasoning.
       4. End with a therapeutic suggestion or technique if the data is abnormal.
       
-      CRITICAL: Act as Dr. VANI. Use clinical terminology but with a human touch. Do NOT be generic.`;
+      CRITICAL: Act as VANI. Use clinical terminology but with a human touch. Do NOT be generic.`;
 
       messages = useOllama ? await callOllama(introPrompt, customSystemPrompt) : null;
       if (!messages) {

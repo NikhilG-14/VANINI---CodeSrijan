@@ -76,7 +76,7 @@ BEHAVIORAL DOSSIER (Current Session):
 ${insights.map(i => `- ${i.label}: ${i.score}% (${i.insight})`).join('\n')}
 
 COGNITIVE RAW DATA:
-${Object.entries(scores).map(([k,v]) => `- ${k.toUpperCase()}: ${v}`).join('\n')}
+${Object.entries(scores).map(([k, v]) => `- ${k.toUpperCase()}: ${v}`).join('\n')}
 ${historyContext}
 
 Analyze the data now and output exactly 8 bulleted points analyzing the potential causes and connections to stress, anxiety, or mental fatigue based on their performance.`;
@@ -130,7 +130,7 @@ Output ONLY the new consolidated narrative.`;
     if (ollamaRes.ok) {
       const data = await ollamaRes.json();
       const updatedMemoir = data.response;
-      
+
       // 3. Save back to DB
       await fetch(`${API_BASE}/user/memoir/save`, {
         method: 'POST',
@@ -162,7 +162,7 @@ export async function generateAvatarResponse(
       const mRes = await fetch(`${API_BASE}/user/memoir/${encodeURIComponent(vimid)}`);
       const mData = await mRes.json();
       masterMemoir = mData?.master_summary || "";
-    } catch {}
+    } catch { }
   }
 
   const body: OllamaRequest = {
@@ -191,7 +191,7 @@ export async function generateAvatarResponse(
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let full = '';
-      
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -279,7 +279,7 @@ Diagnostic Statements:`;
               onToken(obj.response);
               full += obj.response;
             }
-          } catch {}
+          } catch { }
         }
       }
       return full;
@@ -413,7 +413,7 @@ export async function getSessionReport(userId: string): Promise<SessionReport | 
     const res = await fetch(`${API_BASE}/session/report?user_id=${encodeURIComponent(userId)}`);
     if (!res.ok) return null;
     const report: SessionReport = await res.json();
-    
+
     // If we have a delta comparison (meaning we have previous sessions), generate an AI summary
     if (report.delta && Object.keys(report.delta).length > 0) {
       try {
@@ -424,7 +424,7 @@ Do not use lists. Speak directly to the user as "you". Keep it under 50 words.
 
 METRIC DELTAS (Positive is improvement, Negative is decline):
 ${JSON.stringify(report.delta, null, 2)}`;
-        
+
         const body: OllamaRequest = {
           model: OLLAMA_MODEL,
           prompt: aiPrompt,

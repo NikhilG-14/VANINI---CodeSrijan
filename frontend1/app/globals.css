@@ -16,12 +16,17 @@
 
   --color-brand-primary: #7c3aed;
   --color-brand-secondary: #06b6d4;
-  
+
   --animate-shimmer: shimmer 2.5s infinite linear;
-  
+
   @keyframes shimmer {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(100%); }
+    from {
+      transform: translateX(-100%);
+    }
+
+    to {
+      transform: translateX(100%);
+    }
   }
 }
 
@@ -34,11 +39,11 @@
     @apply bg-[#0d1424]/80 border border-white/10 backdrop-blur-2xl ring-1 ring-white/5;
     background-image: radial-gradient(circle at 50% 0%, rgba(124, 58, 237, 0.05), transparent);
   }
-  
+
   .neon-glow-violet {
     box-shadow: 0 0 40px rgba(124, 58, 237, 0.2);
   }
-  
+
   .neon-glow-cyan {
     box-shadow: 0 0 40px rgba(6, 182, 212, 0.2);
   }
