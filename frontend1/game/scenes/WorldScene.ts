@@ -53,6 +53,7 @@ export default class WorldScene extends Scene {
   private isLeftFoot: boolean = true;
   private breadcrumbGroup!: Phaser.GameObjects.Group;
   private currentPathCount: number = -1;
+  private isWalkingPath: boolean = false;
 
 
   constructor() {
@@ -64,12 +65,32 @@ export default class WorldScene extends Scene {
     this.drawWorld();
 
     // ── Hero ────────────────────────────────────────────────
-    const startNode = LEVEL_NODES[0];
-    const startPos = getPixelPos(startNode.x, startNode.y);
+    const { currentLevelIndex, completedZones, shouldAnimateLevelComplete, setAnimateLevelComplete } = useGameStore.getState();
+    const count = completedZones.size;
+    const segmentIndices = PATH_SEGMENTS[count];
+
+    let startPos: { x: number; y: number };
+
+    if (shouldAnimateLevelComplete && segmentIndices && segmentIndices.length > 1) {
+      this.isWalkingPath = true;
+      const firstWp = PATH_WAYPOINTS[segmentIndices[0]];
+      startPos = getPixelPos(firstWp.x, firstWp.y);
+    } else {
+      const node = LEVEL_NODES[currentLevelIndex] || LEVEL_NODES[0];
+      startPos = getPixelPos(node.x, node.y);
+    }
+
     this.hero = this.physics.add.sprite(startPos.x, startPos.y, HERO_SPRITE_NAME, 'walk_down_01');
     this.hero.setCollideWorldBounds(true);
     this.hero.setScale(2.0); // Larger hero for better visibility
     this.hero.setDepth(10);
+
+    if (this.isWalkingPath && segmentIndices) {
+      this.animatePath(segmentIndices).then(() => {
+        this.isWalkingPath = false;
+        setAnimateLevelComplete(false);
+      });
+    }
 
     this.createAnims();
 
@@ -82,6 +103,10 @@ export default class WorldScene extends Scene {
     // Camera following character with high zoom for clarity
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WORLD_W, WORLD_H);
+    
+    // Snap camera to start position immediately to avoid slide-in shift
+    cam.centerOn(startPos.x, startPos.y);
+    
     cam.startFollow(this.hero, true, 0.08, 0.08); // Follow character
     cam.setZoom(0.5); // Tweak: 1.0 provides native resolution clarity and a slightly wider view
 
@@ -134,10 +159,8 @@ export default class WorldScene extends Scene {
       const pos = getPixelPos(node.x, node.y);
       const { completedZones } = useGameStore.getState();
       const isCompleted = completedZones.has(node.id);
-
-      // Houses are in the background image now. 
-      // We just need the interaction zones and a small floaty label.
-      this.drawMapLabel(pos.x, pos.y, node.label, node.color, i === 0 || isCompleted);
+      const isUnlocked = i <= completedZones.size;
+      this.drawMapLabel(pos.x, pos.y, node.label, node.color, isUnlocked, isCompleted);
 
       const zone = this.add.zone(pos.x, pos.y, 140, 140);
       this.physics.add.existing(zone, true);
@@ -146,11 +169,14 @@ export default class WorldScene extends Scene {
     });
   }
 
-  private drawMapLabel(x: number, y: number, label: string, color: string, unlocked: boolean) {
-    this.add.text(x, y + 45, label, {
+  private drawMapLabel(x: number, y: number, label: string, color: string, unlocked: boolean, isCompleted: boolean = false) {
+    const displayText = isCompleted ? `${label} ✓` : label;
+    const textColor = isCompleted ? '#4ade80' : (unlocked ? '#ffffff' : '#888888');
+
+    this.add.text(x, y + 45, displayText, {
       fontFamily: '"Press Start 2P"',
       fontSize: '18px',           // Significantly larger base size for clarity at 0.5x zoom
-      color: unlocked ? '#ffffff' : '#888888',
+      color: textColor,
       stroke: '#000000',
       strokeThickness: 3,
       resolution: 3,                // High resolution for sharp sub-pixel rendering
@@ -208,12 +234,14 @@ export default class WorldScene extends Scene {
           config: { color: '#ff4444' }
         });
       } else {
-        const msg = `ENTER LEVEL ${levelNum}`;
+        const isCompleted = completedZones.has(node.id);
+        const actionWord = isCompleted ? 'REPLAY' : 'ENTER';
+        const msg = `${actionWord} LEVEL ${levelNum}`;
         this.showPrompt(`PRESS E TO ${msg}`, '#ffffff');
         useGameStore.getState().addText({
           key: 'interact',
           value: msg,
-          config: { color: '#ffffff', keycap: 'E' }
+          config: { color: isCompleted ? '#4ade80' : '#ffffff', keycap: 'E' }
         });
       }
     }
@@ -250,7 +278,7 @@ export default class WorldScene extends Scene {
     body.setVelocity(0);
 
     const { dialogOpen } = useGameStore.getState();
-    if (dialogOpen) return;
+    if (dialogOpen || this.isWalkingPath) return;
 
     let dir = '';
 
@@ -338,8 +366,6 @@ export default class WorldScene extends Scene {
       console.warn("Footstep sound failed:", e);
     }
   }
-
-
 
   private playSuccessSound() {
     try {
@@ -442,4 +468,46 @@ export default class WorldScene extends Scene {
       }
     }
   }
-}
+
+  private async animatePath(waypointIndices: number[]) {
+    // We walk through waypoints in sequence
+    for (let i = 0; i < waypointIndices.length - 1; i++) {
+      const currentWp = PATH_WAYPOINTS[waypointIndices[i]];
+      const nextWp = PATH_WAYPOINTS[waypointIndices[i + 1]];
+      
+      const start = getPixelPos(currentWp.x, currentWp.y);
+      const end = getPixelPos(nextWp.x, nextWp.y);
+
+      // Determine direction for animation
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      
+      let dir = DOWN_DIRECTION;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        dir = dx > 0 ? RIGHT_DIRECTION : LEFT_DIRECTION;
+      } else {
+        dir = dy > 0 ? DOWN_DIRECTION : UP_DIRECTION;
+      }
+
+      this.hero.anims.play(`walk_${dir}`, true);
+
+      // Calculate distance and duration (at 220 speed)
+      const distance = Phaser.Math.Distance.Between(start.x, start.y, end.x, end.y);
+      const duration = (distance / 220) * 1000;
+
+      await new Promise<void>(resolve => {
+        this.tweens.add({
+          targets: this.hero,
+          x: end.x,
+          y: end.y,
+          duration: duration,
+          onComplete: () => {
+            resolve();
+          }
+        });
+      });
+    }
+
+    this.hero.anims.stop();
+  }
+}

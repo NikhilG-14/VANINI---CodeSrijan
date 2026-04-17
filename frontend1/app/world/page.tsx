@@ -33,15 +33,32 @@ export default function WorldPage() {
     }
   }, [phase, router]);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Handle keys
   useEffect(() => {
+    if (!mounted) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && dialogOpen) closeDialog();
       if (e.key === 'Enter' && dialogOpen && nearZone) enterZone(nearZone.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [dialogOpen, nearZone, closeDialog, enterZone]);
+  }, [dialogOpen, nearZone, closeDialog, enterZone, mounted]);
+
+  if (!mounted) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#060a14]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-t-2 border-violet-500 animate-spin shadow-[0_0_15px_#8b5cf6]" />
+          <span className="font-pixel text-[10px] text-violet-400 tracking-[0.3em] ml-2 text-shadow-strong uppercase">Initializing Ecosystem...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-[#060a14] selection:bg-violet-500/30">

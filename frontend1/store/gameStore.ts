@@ -66,6 +66,7 @@ interface GameState {
   setMenuItems: (items: any[]) => void;
   addText: (text: any) => void;
   removeText: (key: string) => void;
+  setAnimateLevelComplete: (v: boolean) => void;
 }
 
 export const useGameStore = create<GameState>()((set, get) => ({
@@ -83,6 +84,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   activeGame: null,
   results: [],
   cognitiveScores: null,
+  shouldAnimateLevelComplete: true, // Start with true for the first entrance
 
   // ── Phaser UI Initial state ───────────────
   gameZoom: 1,
@@ -108,8 +110,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   // ── Zone / Game ──────────────────────────
   enterZone: (zoneId) => {
     // In progression mode, zoneId matches the level node id
-    const { currentLevelIndex } = get();
-    const node = LEVEL_NODES[currentLevelIndex];
+    const node = LEVEL_NODES.find(n => n.id === zoneId);
     if (!node) return;
     const game = buildZoneGame(node.cognitive);
     set({ phase: 'minigame', activeGame: game, activeZoneId: node.id, dialogOpen: false });
@@ -162,6 +163,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
       activeZoneId: null,
       currentLevelIndex: Math.min(nextLevel, 4),
       dialogOpen: false, 
+      shouldAnimateLevelComplete: true,
     });
   },
 
@@ -186,6 +188,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
     texts: [...state.texts.filter(t => t.key !== text.key), text] 
   })),
   removeText: (key) => set((state) => ({ texts: state.texts.filter(t => t.key !== key) })),
+  setAnimateLevelComplete: (v) => set({ shouldAnimateLevelComplete: v }),
 
   resetWorld: () => set({
     pos: PLAYER_START,
@@ -204,5 +207,6 @@ export const useGameStore = create<GameState>()((set, get) => ({
     gameZoom: 1,
     dialogMessages: [],
     texts: [],
+    shouldAnimateLevelComplete: true,
   }),
 }));

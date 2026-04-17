@@ -12,12 +12,12 @@ export const calculateGameSize = (
     const heightScale = Math.floor(window.innerHeight / height);
     const zoom = Math.min(widthScale, heightScale) || 1;
 
-    const newWidth = Math.floor(window.innerWidth / tileWidth) * tileWidth / zoom;
-    const newHeight = Math.floor(window.innerHeight / tileHeight) * tileHeight / zoom;
+    const newWidth = Math.floor(window.innerWidth / zoom);
+    const newHeight = Math.floor(window.innerHeight / zoom);
 
     return {
         zoom,
-        width: Math.min(newWidth, Math.floor((width * (1 + widthThreshold)) / tileWidth) * tileWidth),
-        height: Math.min(newHeight, Math.floor((height * (1 + heightThreshold)) / tileHeight) * tileHeight),
+        width: Math.max(width, newWidth),
+        height: Math.max(height, newHeight),
     };
 };

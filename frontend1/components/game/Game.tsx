@@ -43,6 +43,11 @@ function Game() {
         setGameCanvasElement,
     } = useGameStore();
 
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const updateGameGlobalState = useCallback((
         width: number,
         height: number,
@@ -129,8 +134,10 @@ function Game() {
         return () => window.removeEventListener('resize', handleResize);
     }, [phaserGame, updateGameGlobalState]);
 
+    if (!mounted) return null;
+
     return (
-        <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
+        <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden select-none">
             <div
                 id={GAME_CONTENT_ID}
                 className="relative"
