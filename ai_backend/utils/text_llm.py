@@ -2,7 +2,10 @@ import os
 import requests
 import google.generativeai as genai
 from dotenv import load_dotenv
-from groq import Groq
+try:
+    from groq import Groq
+except ModuleNotFoundError:
+    Groq = None
 
 from ai_backend.prompts import (INSPIRATION_POEM_PROMPT,
                              USER_POST_TEXT_DECOMPOSITION_PROMPT,
@@ -48,6 +51,8 @@ async def expand_user_text_using_gemini(user_input):
 
 async def expand_user_text_using_gemma(user_input):
     """Expand text using Groq/Gemma (Cloud Fallback)."""
+    if Groq is None:
+        return "Groq dependency is not installed."
     try:
         client = Groq(api_key=os.getenv("GROQ_API_TOKEN"))
         chat_completion = client.chat.completions.create(

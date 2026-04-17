@@ -27,9 +27,9 @@ export default function TitlePage() {
     <div className="relative w-full h-full flex flex-col items-center justify-between overflow-hidden"
       style={{ background: 'radial-gradient(ellipse at 50% 30%, #1a0a40 0%, #060a14 60%)' }}>
 
-      {/* Star field */}
+      {/* Star field - rendered only on client to prevent Next.js Math.random() hydration mismatches */}
       <div className="absolute inset-0 pointer-events-none">
-        {STARS.map((s, i) => (
+        {ready && STARS.map((s, i) => (
           <div
             key={i}
             className="star absolute rounded-full bg-white opacity-20"

@@ -162,6 +162,19 @@ def insert_game_session(user_id, results, scores):
     conn = get_db_connection()
     if not conn:
         return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO game_sessions (user_id, results, scores)
+                VALUES (%s, %s, %s)
+                RETURNING id;
+            """, (user_id, json.dumps(results), json.dumps(scores)))
+            session_id = cur.fetchone()[0]
+            logger.info(f"Inserted game session with ID: {session_id}")
+            return str(session_id)
+    except Exception as e:
+        logger.error(f"Error inserting game session: {e}")
+        return None
 
 
 def _to_datetime(value):
@@ -246,6 +259,10 @@ def get_game_sessions(user_id, limit=50):
                     actions, behavioral_signals, final_outcome, results, scores, created_at
                 FROM game_sessions
                 WHERE user_id = %s
+                  AND results IS NOT NULL
+                  AND jsonb_typeof(results) = 'array'
+                  AND jsonb_array_length(results) > 0
+                  AND (game_type IS NOT NULL OR actions IS NOT NULL)
                 ORDER BY created_at DESC
                 LIMIT %s;
                 """,
@@ -308,19 +325,6 @@ def aggregate_behavior_from_sessions(sessions):
         "quit_early_ratio": quit_ratio,
         "trend": "stable",
     }
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO game_sessions (user_id, results, scores)
-                VALUES (%s, %s, %s)
-                RETURNING id;
-            """, (user_id, json.dumps(results), json.dumps(scores)))
-            session_id = cur.fetchone()[0]
-            logger.info(f"Inserted game session with ID: {session_id}")
-            return str(session_id)
-    except Exception as e:
-        logger.error(f"Error inserting game session: {e}")
-        return None
 
 def insert_chat_message(user_id, role, content):
     """

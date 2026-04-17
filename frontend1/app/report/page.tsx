@@ -7,7 +7,7 @@ import { AvatarMessage } from '@/components/ui/AvatarMessage';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { useGameStore } from '@/store/gameStore';
 import { calculateScores, getCognitiveInsights, getAvatarMessage } from '@/lib/cognitiveScoring';
-import { generateAvatarResponse, checkOllamaHealth, saveGameSession, getSessionReport, type SessionReport } from '@/lib/ollamaClient';
+import { generateAvatarResponse, checkOllamaHealth, saveGameSession, getSessionReport, getSessionHistory, type SessionReport } from '@/lib/ollamaClient';
 import { loadResults } from '@/lib/gameSession';
 import type { CognitiveInsight, CognitiveScores } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
@@ -25,38 +25,92 @@ export default function ReportPage() {
   const [ollamaOnline, setOllamaOnline] = useState(false);
   const [computed, setComputed] = useState<CognitiveScores | null>(null);
   const [reportData, setReportData] = useState<SessionReport | null>(null);
+  const [resolvedResults, setResolvedResults] = useState(results);
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | undefined>(undefined);
+  const [shouldPersistSession, setShouldPersistSession] = useState(false);
+
+  const normalizeScores = (value: unknown): CognitiveScores | null => {
+    if (!value || typeof value !== 'object') return null;
+    const maybe = value as Record<string, unknown>;
+    const toNum = (v: unknown, fallback: number) => typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+    return {
+      attention: toNum(maybe.attention, 50),
+      memory: toNum(maybe.memory, 50),
+      impulsivity: toNum(maybe.impulsivity, 20),
+      flexibility: toNum(maybe.flexibility, 50),
+      risk_behavior: toNum(maybe.risk_behavior, 30),
+    };
+  };
 
   useEffect(() => {
-    let finalResults = results;
-    let localStartTimestamp: number | undefined;
-    if (!finalResults.length) {
-      const saved = loadResults();
-      if (saved) {
-        finalResults = saved.results;
-        localStartTimestamp = saved.timestamp;
+    let cancelled = false;
+    const hydrate = async () => {
+      let finalResults = results;
+      let localStartTimestamp: number | undefined;
+
+      if (!finalResults.length) {
+        const saved = loadResults();
+        if (saved?.results?.length) {
+          finalResults = saved.results;
+          localStartTimestamp = saved.timestamp;
+          if (!cancelled) {
+            setSessionStartedAt(saved.timestamp);
+            setShouldPersistSession(false);
+          }
+        }
       }
-    }
-    if (!finalResults.length) {
-      router.push('/');
-      return;
-    }
-    const sc = calculateScores(finalResults);
-    setComputed(sc);
-    setScores(sc);
-    setInsights(getCognitiveInsights(sc));
-    if (localStartTimestamp) {
-      saveGameSession(useUserStore.getState().ensureVimid(), finalResults, sc, localStartTimestamp);
-    }
+
+      if (!finalResults.length) {
+        const vimid = useUserStore.getState().ensureVimid();
+        const history = await getSessionHistory(vimid);
+        const latest = history?.sessions?.[history.sessions.length - 1] as { results?: typeof results; scores?: unknown } | undefined;
+        if (latest?.results?.length) {
+          finalResults = latest.results;
+          if (!cancelled) {
+            setResolvedResults(latest.results);
+          }
+        } else if (latest?.scores) {
+          const normalized = normalizeScores(latest.scores);
+          if (normalized && !cancelled) {
+            setComputed(normalized);
+            setScores(normalized);
+            setInsights(getCognitiveInsights(normalized));
+            setResolvedResults([]);
+          }
+        }
+      }
+
+      // If no results, we will intentionally proceed with an empty array.
+      // calculateScores() gracefully falls back to baseline (50% on all metrics)
+      // to allow previewing the report UI exactly as requested.
+      // (Removed router.push('/'))
+
+      const sc = calculateScores(finalResults);
+      if (cancelled) return;
+      setResolvedResults(finalResults);
+      setComputed(sc);
+      setScores(sc);
+      setInsights(getCognitiveInsights(sc));
+      if (!localStartTimestamp && results.length) {
+        setShouldPersistSession(true);
+        setSessionStartedAt(Date.now());
+      }
+    };
+    hydrate();
+    return () => {
+      cancelled = true;
+    };
   }, [results, router, setScores]);
 
   // Persist session to backend
   useEffect(() => {
-    if (!computed || !results.length) return;
+    if (!computed || !resolvedResults.length || !shouldPersistSession) return;
     const vimid = useUserStore.getState().ensureVimid();
-    saveGameSession(vimid, results, computed).then(() => {
+    saveGameSession(vimid, resolvedResults, computed, sessionStartedAt).then(() => {
       getSessionReport(vimid).then(setReportData).catch(() => setReportData(null));
+      setShouldPersistSession(false);
     });
-  }, [computed, results]);
+  }, [computed, resolvedResults, shouldPersistSession, sessionStartedAt]);
 
   useEffect(() => {
     if (!computed) return;
@@ -98,7 +152,7 @@ export default function ReportPage() {
 
   const handleConsultVani = useCallback(() => {
     // Extract a high-fidelity telemetry summary for VANI
-    const telemetry = results.map(r => ({
+    const telemetry = resolvedResults.map(r => ({
       game: r.gameId,
       avgRT: r.reactionTimeMs.length ? Math.round(r.reactionTimeMs.reduce((a, b) => a + b, 0) / r.reactionTimeMs.length) : 0,
       errors: r.errorCount,
@@ -116,7 +170,9 @@ export default function ReportPage() {
       String.fromCharCode(parseInt(p1, 16))
     ));
     window.open(`http://localhost:5173/?sessionData=${payload}`, '_blank');
-  }, [computed, insights, results]);
+  }, [computed, insights, resolvedResults]);
+
+  // (Removed guard block intentionally so user can preview the UI with baseline stats)
 
   if (!computed || !insights.length) {
     return (
@@ -154,7 +210,7 @@ export default function ReportPage() {
             Cognitive <span className="text-gradient">Signature</span>
           </h1>
           <p className="text-white/40 text-lg max-w-3xl mx-auto font-medium leading-relaxed text-center w-full">
-            Your behavioral patterns across {results.length} cognitive nodes have been synthesized into a unique performance dossier.
+            Your behavioral patterns across {resolvedResults.length} cognitive nodes have been synthesized into a unique performance dossier.
           </p>
         </motion.div>
 
@@ -244,19 +300,14 @@ export default function ReportPage() {
               <MetricCard 
                 key={ins.cognitive} 
                 insight={ins} 
-                result={results.find(r => r.cognitive === ins.cognitive)}
+                result={resolvedResults.find(r => r.cognitive === ins.cognitive)}
                 index={idx}
               />
             ))}
           </div>
 
           {reportData && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="glass-card rounded-2xl p-8 border-2 border-white/5 relative overflow-hidden group"
-            >
+            <div className="glass-card rounded-2xl p-8 border-2 border-white/5 relative overflow-hidden group animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
               
               <div className="relative z-10 flex flex-col md:flex-row items-start justify-between gap-6 mb-8 border-b border-white/5 pb-8">
@@ -271,7 +322,7 @@ export default function ReportPage() {
                   <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 relative">
                     <div className="absolute -top-3 -left-3 text-2xl opacity-50">✨</div>
                     <p className="text-sm text-white/80 font-medium leading-relaxed italic pl-4 border-l-2 border-violet-500/50">
-                      "{reportData.ai_summary}"
+                      {reportData.ai_summary}
                     </p>
                   </div>
                 </div>
@@ -320,7 +371,7 @@ export default function ReportPage() {
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
         </section>
 

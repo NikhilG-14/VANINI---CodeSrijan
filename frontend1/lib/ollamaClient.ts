@@ -214,6 +214,18 @@ export async function saveGameSession(
   startedAt?: number
 ) {
   try {
+    const scorePairs = Object.entries(scores).sort(([a], [b]) => a.localeCompare(b));
+    const scoreFingerprint = scorePairs.map(([k, v]) => `${k}:${Math.round(v)}`).join('|');
+    const sessionSignature = `${userId}|${startedAt ?? 'na'}|${results.length}|${scoreFingerprint}`;
+    if (typeof window !== 'undefined') {
+      const key = 'vani_last_saved_session_signature';
+      const lastSignature = window.localStorage.getItem(key);
+      if (lastSignature === sessionSignature) {
+        return true;
+      }
+      window.localStorage.setItem(key, sessionSignature);
+    }
+
     const sessionStart = new Date(
       typeof startedAt === 'number'
         ? startedAt

@@ -1,7 +1,10 @@
 import os
 
 import requests
-import tweepy
+try:
+    import tweepy
+except ModuleNotFoundError:
+    tweepy = None
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
@@ -9,6 +12,12 @@ load_dotenv()
 
 
 def send_message_to_twitter(image_url, caption):
+    if tweepy is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Twitter integration unavailable: missing 'tweepy' dependency.",
+        )
+
     CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
     CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
     ACCESS_KEY = os.getenv("TWITTER_ACCESS_TOKEN")
