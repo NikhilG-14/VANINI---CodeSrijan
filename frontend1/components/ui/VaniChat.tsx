@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { generateAvatarResponse, saveChatMessage, getUserDossier } from '@/lib/ollamaClient';
+import type { UserDossier } from '@/lib/ollamaClient';
 import type { CognitiveScores, CognitiveInsight } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 
@@ -19,7 +20,7 @@ export function VaniChat({ scores, insights }: Props) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const vimid = useUserStore(s => s.ensureVimid());
-  const [dossier, setDossier] = useState<{ recent_sessions: any[], recent_chat: any[] } | null>(null);
+  const [dossier, setDossier] = useState<UserDossier | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +30,7 @@ export function VaniChat({ scores, insights }: Props) {
       if (data) {
         setDossier(data);
         if (data.recent_chat?.length > 0) {
-          setMessages(data.recent_chat.map((m: any) => ({
+          setMessages(data.recent_chat.map((m) => ({
             role: m.role,
             content: m.content
           })));
@@ -96,7 +97,7 @@ export function VaniChat({ scores, insights }: Props) {
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
             <div className="text-4xl">🧠</div>
             <p className="text-white text-sm font-medium italic">
-              "I remember our journey. What would you like to discuss about your results?"
+              &quot;I remember our journey. What would you like to discuss about your results?&quot;
             </p>
           </div>
         )}

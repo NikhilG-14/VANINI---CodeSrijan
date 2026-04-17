@@ -83,6 +83,11 @@ export default function TitlePage() {
             <span className="relative z-10 font-extrabold tracking-widest">START EXPLORATION</span>
             <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           </Link>
+          <Link href="/history"
+            className="px-8 py-5 rounded-2xl border border-white/20 text-white/80 hover:text-white hover:border-violet-400/60 transition-all text-sm font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10"
+          >
+            History
+          </Link>
         </div>
 
         <p className="text-white/20 text-xs uppercase font-bold tracking-[0.2em] title-flicker">

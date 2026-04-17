@@ -2,6 +2,7 @@ import os
 import pickle
 import logging
 import json
+from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from pgvector.psycopg2 import register_vector
@@ -86,11 +87,29 @@ def init_db():
             CREATE TABLE IF NOT EXISTS game_sessions (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id TEXT,
+                game_type TEXT,
+                session_start TIMESTAMP,
+                session_end TIMESTAMP,
+                actions JSONB,
+                behavioral_signals JSONB,
+                final_outcome JSONB,
                 results JSONB,
                 scores JSONB,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_game_sessions_user_time
+            ON game_sessions (user_id, created_at DESC);
+        """)
+
+        # Backfill columns for existing deployments where game_sessions already exists
+        cur.execute("ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS game_type TEXT;")
+        cur.execute("ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS session_start TIMESTAMP;")
+        cur.execute("ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS session_end TIMESTAMP;")
+        cur.execute("ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS actions JSONB;")
+        cur.execute("ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS behavioral_signals JSONB;")
+        cur.execute("ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS final_outcome JSONB;")
 
         # Create chat_history table
         cur.execute("""
@@ -143,6 +162,152 @@ def insert_game_session(user_id, results, scores):
     conn = get_db_connection()
     if not conn:
         return None
+
+
+def _to_datetime(value):
+    """Parse ISO date strings safely."""
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
+
+def insert_detailed_game_session(payload):
+    """
+    Inserts an append-only, timeline-safe game session row.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+
+    user_id = payload.get("user_id")
+    if not user_id:
+        logger.error("insert_detailed_game_session missing user_id")
+        return None
+
+    results = payload.get("results", [])
+    scores = payload.get("scores", {})
+    game_type = payload.get("game_type", "mixed")
+    session_start = _to_datetime(payload.get("session_start"))
+    session_end = _to_datetime(payload.get("session_end"))
+    actions = payload.get("actions", [])
+    behavioral_signals = payload.get("behavioral_signals", {})
+    final_outcome = payload.get("final_outcome", {})
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO game_sessions (
+                    user_id, game_type, session_start, session_end,
+                    actions, behavioral_signals, final_outcome,
+                    results, scores
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id;
+                """,
+                (
+                    user_id,
+                    game_type,
+                    session_start,
+                    session_end,
+                    json.dumps(actions),
+                    json.dumps(behavioral_signals),
+                    json.dumps(final_outcome),
+                    json.dumps(results),
+                    json.dumps(scores),
+                ),
+            )
+            session_id = cur.fetchone()[0]
+            logger.info(f"Inserted detailed game session with ID: {session_id}")
+            return str(session_id)
+    except Exception as e:
+        logger.error(f"Error inserting detailed game session: {e}")
+        return None
+
+
+def get_game_sessions(user_id, limit=50):
+    """
+    Retrieves game sessions for a user ordered newest first.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    id, user_id, game_type, session_start, session_end,
+                    actions, behavioral_signals, final_outcome, results, scores, created_at
+                FROM game_sessions
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s;
+                """,
+                (user_id, limit),
+            )
+            return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error retrieving game sessions: {e}")
+        return []
+
+
+def aggregate_behavior_from_sessions(sessions):
+    """
+    Produces compact aggregate trends from prior sessions.
+    """
+    if not sessions:
+        return {
+            "session_count": 0,
+            "average_scores": {},
+            "average_reaction_time_ms": None,
+            "quit_early_ratio": 0,
+            "trend": "insufficient_data",
+        }
+
+    score_totals = {}
+    score_counts = {}
+    total_rt = 0
+    rt_samples = 0
+    quit_early = 0
+    game_rows = 0
+
+    for session in sessions:
+        scores = session.get("scores") or {}
+        for key, value in scores.items():
+            if isinstance(value, (int, float)):
+                score_totals[key] = score_totals.get(key, 0) + value
+                score_counts[key] = score_counts.get(key, 0) + 1
+
+        for result in session.get("results") or []:
+            game_rows += 1
+            if result.get("quitEarly"):
+                quit_early += 1
+            for rt in result.get("reactionTimeMs") or []:
+                if isinstance(rt, (int, float)):
+                    total_rt += rt
+                    rt_samples += 1
+
+    avg_scores = {
+        key: round(score_totals[key] / score_counts[key], 2)
+        for key in score_totals
+        if score_counts.get(key)
+    }
+    avg_rt = round(total_rt / rt_samples, 2) if rt_samples else None
+    quit_ratio = round(quit_early / game_rows, 4) if game_rows else 0
+
+    return {
+        "session_count": len(sessions),
+        "average_scores": avg_scores,
+        "average_reaction_time_ms": avg_rt,
+        "quit_early_ratio": quit_ratio,
+        "trend": "stable",
+    }
     try:
         with conn.cursor() as cur:
             cur.execute("""

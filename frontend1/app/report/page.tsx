@@ -7,31 +7,34 @@ import { AvatarMessage } from '@/components/ui/AvatarMessage';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { useGameStore } from '@/store/gameStore';
 import { calculateScores, getCognitiveInsights, getAvatarMessage } from '@/lib/cognitiveScoring';
-import { generateAvatarResponse, checkOllamaHealth, saveGameSession } from '@/lib/ollamaClient';
+import { generateAvatarResponse, checkOllamaHealth, saveGameSession, getSessionReport, type SessionReport } from '@/lib/ollamaClient';
 import { loadResults } from '@/lib/gameSession';
 import type { CognitiveInsight, CognitiveScores } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 import { VaniChat } from '@/components/ui/VaniChat';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function ReportPage() {
   const router = useRouter();
   const results = useGameStore(s => s.results);
-  const scores = useGameStore(s => s.cognitiveScores);
   const setScores = useGameStore(s => s.setScores);
   const resetWorld = useGameStore(s => s.resetWorld);
 
   const [insights, setInsights] = useState<CognitiveInsight[]>([]);
   const [avatarMsg, setAvatarMsg] = useState('');
   const [ollamaOnline, setOllamaOnline] = useState(false);
-  const [streaming, setStreaming] = useState(false);
   const [computed, setComputed] = useState<CognitiveScores | null>(null);
+  const [reportData, setReportData] = useState<SessionReport | null>(null);
 
   useEffect(() => {
     let finalResults = results;
+    let localStartTimestamp: number | undefined;
     if (!finalResults.length) {
       const saved = loadResults();
-      if (saved) finalResults = saved.results;
+      if (saved) {
+        finalResults = saved.results;
+        localStartTimestamp = saved.timestamp;
+      }
     }
     if (!finalResults.length) {
       router.push('/');
@@ -41,13 +44,18 @@ export default function ReportPage() {
     setComputed(sc);
     setScores(sc);
     setInsights(getCognitiveInsights(sc));
+    if (localStartTimestamp) {
+      saveGameSession(useUserStore.getState().ensureVimid(), finalResults, sc, localStartTimestamp);
+    }
   }, [results, router, setScores]);
 
   // Persist session to backend
   useEffect(() => {
     if (!computed || !results.length) return;
     const vimid = useUserStore.getState().ensureVimid();
-    saveGameSession(vimid, results, computed);
+    saveGameSession(vimid, results, computed).then(() => {
+      getSessionReport(vimid).then(setReportData).catch(() => setReportData(null));
+    });
   }, [computed, results]);
 
   useEffect(() => {
@@ -61,22 +69,20 @@ export default function ReportPage() {
         setAvatarMsg(fallback);
         return;
       }
-      setStreaming(true);
       let streamed = '';
       generateAvatarResponse(
         "I just completed the Mind Journey behavioral assessment. What did you notice?",
         computed,
         insightsData,
+        undefined,
         chunk => {
           streamed += chunk;
           setAvatarMsg(streamed);
         }
       ).then(full => {
         if (!full) setAvatarMsg(fallback);
-        setStreaming(false);
       }).catch(() => {
         setAvatarMsg(fallback);
-        setStreaming(false);
       });
     });
   }, [computed]);
@@ -243,6 +249,79 @@ export default function ReportPage() {
               />
             ))}
           </div>
+
+          {reportData && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="glass-card rounded-2xl p-8 border-2 border-white/5 relative overflow-hidden group"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-start justify-between gap-6 mb-8 border-b border-white/5 pb-8">
+                <div className="flex-1">
+                  <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border border-violet-500/30 text-violet-400 bg-violet-500/5 mb-4 shadow-[0_0_15px_rgba(124,58,237,0.1)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                    Vani Progression Snapshot
+                  </div>
+                  <h3 className="text-3xl font-black text-white tracking-tight mb-4">Cross-Session <span className="text-gradient hover-shift">Trajectory</span></h3>
+                  
+                  {/* AI Summary Block */}
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 relative">
+                    <div className="absolute -top-3 -left-3 text-2xl opacity-50">✨</div>
+                    <p className="text-sm text-white/80 font-medium leading-relaxed italic pl-4 border-l-2 border-violet-500/50">
+                      "{reportData.ai_summary}"
+                    </p>
+                  </div>
+                </div>
+                
+                <Link
+                  href="/history"
+                  className="shrink-0 group flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-violet-600/10 hover:bg-violet-600/20 text-violet-300 font-bold text-xs uppercase tracking-widest transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(124,58,237,0.2)] border border-violet-500/20"
+                >
+                  <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Access Timeline
+                </Link>
+              </div>
+
+              {/* Deltas Grid */}
+              <div className="relative z-10">
+                <h4 className="text-[10px] font-black tracking-[0.3em] text-white/30 uppercase mb-5">Metric Fluctuations (vs Previous)</h4>
+                {Object.keys(reportData.delta ?? {}).length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {Object.entries(reportData.delta ?? {}).map(([key, value]) => {
+                      const delta = Number(value);
+                      if (delta === 0) return null; // Only show meaningful changes
+                      
+                      const isImprovement = delta > 0;
+                      const cls = isImprovement ? 'text-emerald-400' : 'text-rose-400';
+                      const bgCls = isImprovement ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/20';
+                      const icon = isImprovement ? '↑' : '↓';
+                      const sign = isImprovement ? '+' : '';
+                      
+                      return (
+                        <div key={key} className={`rounded-xl border p-4 flex flex-col gap-2 transition-all hover:-translate-y-1 ${bgCls}`}>
+                          <div className="text-[10px] uppercase font-bold tracking-wider text-white/50 truncate" title={key.replace(/_/g, ' ')}>
+                            {key.replace(/_/g, ' ')}
+                          </div>
+                          <div className={`text-2xl font-black flex items-center gap-2 ${cls}`}>
+                            {icon} {sign}{Math.abs(delta).toFixed(1)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-sm text-white/40 italic py-4 bg-white/[0.02] rounded-xl text-center border border-white/5">
+                    No significant metric fluctuations detected compared to your historical baseline.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </section>
 
         {/* Contextual Chat */}

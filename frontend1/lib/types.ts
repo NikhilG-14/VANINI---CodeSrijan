@@ -57,6 +57,7 @@ export interface SessionConfig {
 export interface GameResult {
   cognitive: CognitiveKey;
   gameId: string;
+  startedAt?: number;
   durationMs: number;
   reactionTimeMs: number[];
   errorCount: number;

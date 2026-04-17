@@ -310,6 +310,92 @@ async def save_session_endpoint(data: dict):
         logger.error(f"Error in save_session_endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/session/save")
+async def save_detailed_session_endpoint(data: dict):
+    """Append-only save for detailed gameplay sessions."""
+    try:
+        from ai_backend.db import insert_detailed_game_session
+        session_id = insert_detailed_game_session(data)
+        if not session_id:
+            raise Exception("Failed to save detailed session")
+        return {"status": "success", "session_id": session_id}
+    except Exception as e:
+        logger.error(f"Error in save_detailed_session_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/session/history")
+async def get_session_history_endpoint(user_id: str, limit: int = 50):
+    """Retrieve chronological session history for a user."""
+    try:
+        from ai_backend.db import get_game_sessions
+        sessions = get_game_sessions(user_id, limit=limit)
+        timeline = list(reversed(sessions))
+        return JSONResponse(content=serialize_db_data({
+            "user_id": user_id,
+            "count": len(timeline),
+            "sessions": timeline
+        }))
+    except Exception as e:
+        logger.error(f"Error in get_session_history_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/session/report")
+async def get_session_report_endpoint(user_id: str):
+    """Return current-vs-previous comparison and trend summary."""
+    try:
+        from ai_backend.db import aggregate_behavior_from_sessions, get_game_sessions
+        sessions = get_game_sessions(user_id, limit=25)
+        if not sessions:
+            return JSONResponse(content={
+                "current_analysis": {},
+                "previous_analysis": {},
+                "delta": {},
+                "ai_summary": "No sessions found yet. Complete a game session to generate your first report."
+            })
+
+        current_session = sessions[0]
+        previous_sessions = sessions[1:]
+        current_analysis = aggregate_behavior_from_sessions([current_session])
+        previous_analysis = aggregate_behavior_from_sessions(previous_sessions)
+
+        current_scores = current_analysis.get("average_scores", {})
+        prev_scores = previous_analysis.get("average_scores", {})
+        delta = {}
+        improvements = []
+        regressions = []
+        for key in sorted(set(list(current_scores.keys()) + list(prev_scores.keys()))):
+            cur = current_scores.get(key, 0)
+            prev = prev_scores.get(key, 0)
+            diff = round(cur - prev, 2)
+            delta[key] = diff
+            if diff >= 5:
+                improvements.append(f"{key} (+{diff})")
+            elif diff <= -5:
+                regressions.append(f"{key} ({diff})")
+
+        if not previous_sessions:
+            ai_summary = "Baseline session captured. Play another session to unlock progression analysis."
+        else:
+            improved_text = ", ".join(improvements) if improvements else "no major domains"
+            regressed_text = ", ".join(regressions) if regressions else "no major domains"
+            ai_summary = (
+                f"User has improved in {improved_text}, but regressed in {regressed_text}. "
+                "Use these changes to adapt task intensity and pacing in the next session."
+            )
+
+        return JSONResponse(content=serialize_db_data({
+            "current_analysis": current_analysis,
+            "previous_analysis": previous_analysis,
+            "delta": delta,
+            "ai_summary": ai_summary,
+        }))
+    except Exception as e:
+        logger.error(f"Error in get_session_report_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/get-sessions/{user_id}")
 async def get_sessions_endpoint(user_id: str):
     """Retrieve all game sessions for a user."""
@@ -354,34 +440,24 @@ async def get_chat_history_endpoint(user_id: str):
 async def get_user_dossier_endpoint(user_id: str):
     """Retrieve aggregate data (sessions + chat) for AI context."""
     try:
-        from ai_backend.db import get_db_connection
+        from ai_backend.db import aggregate_behavior_from_sessions, get_db_connection, get_game_sessions
+        sessions = get_game_sessions(user_id, limit=6)
+        current_session = sessions[0] if sessions else None
+        previous_sessions = sessions[1:] if len(sessions) > 1 else []
+        aggregated_behavior = aggregate_behavior_from_sessions(previous_sessions)
+
         conn = get_db_connection()
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            # Get last 5 sessions with raw results to find behavioral flags
-            cur.execute("SELECT scores, results, created_at FROM game_sessions WHERE user_id = %s ORDER BY created_at DESC LIMIT 5;", (user_id,))
-            sessions = cur.fetchall()
-            
-            # Map sessions to a cleaner "behavioral snapshot"
-            behavioral_history = []
-            for s in sessions:
-                # Find if user quit early in any game in that session
-                results = s.get("results", [])
-                quits = [r["gameId"] for r in results if r.get("quitEarly")]
-                
-                behavioral_history.append({
-                    "scores": s["scores"],
-                    "quits": quits,
-                    "date": str(s["created_at"])
-                })
-
             # Get last 10 chat messages
             cur.execute("SELECT role, content FROM chat_history WHERE user_id = %s ORDER BY created_at DESC LIMIT 10;", (user_id,))
             chats = cur.fetchall()
-            
+
         return JSONResponse(content=serialize_db_data({
-            "recent_sessions": behavioral_history,
-            "recent_chat": chats[::-1]
+            "current_session": current_session,
+            "previous_sessions": previous_sessions,
+            "aggregated_behavior": aggregated_behavior,
+            "recent_chat": chats[::-1],
         }))
     except Exception as e:
         logger.error(f"Error in get_user_dossier_endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving dossier: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving dossier: {e}")
