@@ -179,8 +179,12 @@ export default function ReportPage() {
   // ── loading state ─────────────────────────────────────────────────────────
   if (!ready) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-[#060a14]">
-        <div className="flex flex-col items-center gap-6">
+      <div className="w-full h-full flex items-center justify-center bg-[#060a14] relative overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
+          style={{ backgroundImage: 'url("/backgrounds/report-bg.jpg")' }}
+        />
+        <div className="relative z-10 flex flex-col items-center gap-6">
           <div className="relative w-16 h-16">
             <div className="absolute inset-0 border-4 border-violet-500/20 rounded-full" />
             <div className="absolute inset-0 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -198,16 +202,21 @@ export default function ReportPage() {
     <div className="w-full min-h-screen overflow-y-auto bg-[#060a14] selection:bg-violet-500/30 font-sans">
 
       {/* Decorative background – fixed so it doesn't affect layout */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.07] blur-[160px]"
+      <div className="fixed inset-0 pointer-events-none overflow-hidden ring-1 ring-inset ring-white/10">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+          style={{ backgroundImage: 'url("/backgrounds/report-bg.jpg")' }}
+        />
+        <div className="absolute inset-0 bg-[#060a14]/80 backdrop-blur-[2px]" />
+        <div 
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.15] blur-[160px]"
           style={{ background: dominant?.color ?? '#7c3aed' }}
         />
         <div
-          className="absolute inset-0 opacity-[0.025]"
+          className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-            backgroundSize: '36px 36px',
+            backgroundSize: '40px 40px',
           }}
         />
       </div>

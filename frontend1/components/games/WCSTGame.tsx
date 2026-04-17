@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GameTimer } from './GameTimer';
+import { MiniGameChrome } from './MiniGameChrome';
 import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
@@ -11,7 +11,7 @@ interface Props {
   onExit: () => void;
 }
 
-const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#eab308'];
+const COLORS = ['#FF0055', '#3B82F6', '#00FF9F', '#FBFF00']; // Neon Red, Blue, Green, Yellow
 const SHAPES = ['circle', 'square', 'triangle', 'star'];
 const NUMBERS = [1, 2, 3, 4];
 const RULES = ['color', 'shape', 'number'];
@@ -138,84 +138,99 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
   };
 
   const renderShape = (shape: string, color: string) => {
-    if (shape === 'circle') return <div className="w-6 h-6 rounded-full" style={{ backgroundColor: color }} />;
-    if (shape === 'square') return <div className="w-6 h-6" style={{ backgroundColor: color }} />;
+    const style = { backgroundColor: color, boxShadow: `0 0 15px ${color}88` };
+    if (shape === 'circle') return <div className="w-8 h-8 rounded-full" style={style} />;
+    if (shape === 'square') return <div className="w-8 h-8 rounded-sm" style={style} />;
     if (shape === 'triangle') return (
-      <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[20px]" style={{ borderBottomColor: color }} />
+      <div className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-b-[24px] drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]" style={{ borderBottomColor: color }} />
     );
-    if (shape === 'star') return <div className="text-xl leading-none" style={{ color }}>★</div>;
+    if (shape === 'star') return <div className="text-3xl leading-none drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]" style={{ color }}>★</div>;
   };
 
   const renderCardBody = (card: Card) => (
-    <div className="grid grid-cols-2 gap-1 place-items-center">
+    <div className="grid grid-cols-2 gap-3 place-items-center">
       {Array.from({ length: card.number }).map((_, i) => (
-        <div key={i}>{renderShape(card.shape, card.color)}</div>
+        <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} key={i}>{renderShape(card.shape, card.color)}</motion.div>
       ))}
     </div>
   );
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-2xl overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">
-      <div className="flex items-center justify-between p-6 bg-black/20 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{assignment.theme.emoji}</span>
-          <div>
-            <h2 className="text-lg font-bold tracking-wide">{assignment.gameName}</h2>
-            <p className="text-xs text-white/50">{assignment.theme.label}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          {phase === 'playing' && <GameTimer durationMs={assignment.durationMs} timeLeftMs={timeLeft} />}
-          <button onClick={onExit} className="px-14 py-3 min-w-[150px] flex items-center justify-center bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/40 transition-colors">
-            Exit
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col items-center p-8 relative">
-        <AnimatePresence mode="wait">
+    <MiniGameChrome
+      assignment={assignment}
+      phase={phase}
+      timeLeftMs={timeLeft}
+      onExit={onExit}
+      bgImage="/backgrounds/memory.jpg"
+      variant="cabin"
+      status="Concept Shift"
+    >
+      <div className="w-full h-full relative flex flex-col items-center justify-center p-8">
+        <AnimatePresence>
           {phase === 'intro' && (
-            <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-md text-center space-y-6 mt-10">
-              <div className="text-5xl">{assignment.theme.emoji}</div>
-              <h3 className="text-2xl font-bold">Rule Adaptation Test</h3>
-              <p className="text-white/70">Match the bottom card to one of the four top columns. The matching rule is secret. Figuring it out is part of the challenge. <br /><br /><span className="text-emerald-400 font-bold">The rule will change as you progress!</span></p>
-              <button onClick={startGame} className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold transition-all text-shadow">
-                Start Challenge
-              </button>
+            <motion.div key="intro" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} className="max-w-xl text-center flex flex-col items-center">
+              <div className="bg-black p-16 md:p-20 rounded-[4rem] border border-white/10 shadow-3xl flex flex-col items-center max-w-2xl">
+                <div className="w-20 h-20 rounded-2xl bg-emerald-600 flex items-center justify-center text-5xl shadow-xl border-2 border-white/20 mb-10 transform rotate-[10deg]">
+                  {assignment.theme.emoji}
+                </div>
+
+                <h3 className="text-5xl kaboom-text mb-8">Rule Finder</h3>
+
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-[2.5rem] p-8 text-center space-y-4 mb-10 w-full">
+                  <p className="text-white/90 text-lg leading-relaxed px-6">Find the hidden rule! Match the card at the bottom to one of the four piles at the top.</p>
+                </div>
+
+                <button
+                  onClick={startGame}
+                  className="w-full py-7 rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm uppercase tracking-[0.4em] transition-all transform hover:scale-[1.02] active:scale-95 shadow-2xl border border-white/20"
+                >
+                  Begin Match
+                </button>
+              </div>
             </motion.div>
           )}
 
           {phase === 'playing' && (
-            <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between py-10">
-              <div className="h-8 absolute top-8">
-                {showFeedback && (
-                  <div className={`text-2xl font-black ${showFeedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
-                    {showFeedback === 'correct' ? 'CORRECT MATCH' : 'WRONG MATCH'}
-                  </div>
-                )}
+            <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between py-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <div className="h-20 flex items-center justify-center">
+                <AnimatePresence>
+                  {showFeedback && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.5 }}
+                      animate={{ opacity: 1, y: -15, scale: 1.6 }}
+                      exit={{ opacity: 0, scale: 2 }}
+                      className={`text-3xl font-black uppercase tracking-[0.4em] px-12 py-4 rounded-full backdrop-blur-3xl border-2 ${showFeedback === 'correct' ? 'text-green-400 border-green-500/50 bg-green-500/20' : 'text-red-400 border-red-500/50 bg-red-500/20'}`}
+                      style={{ textShadow: showFeedback === 'correct' ? '0 0 30px #4ade80' : '0 0 30px #ef4444' }}
+                    >
+                      {showFeedback === 'correct' ? 'PERFECT' : 'WRONG RULE'}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              <div className="flex justify-center gap-4 sm:gap-8 w-full mt-10">
+              <div className="flex justify-center gap-6 sm:gap-12 w-full mt-4">
                 {baseCards.map((bc, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleDrop(bc)}
-                    className="w-20 h-28 sm:w-28 sm:h-40 bg-white/10 rounded-xl border border-white/20 flex items-center justify-center cursor-pointer hover:bg-white/20 hover:scale-105 transition-all shadow-lg"
+                    className="w-28 h-40 sm:w-32 sm:h-48 bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border-2 border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/15 hover:scale-105 active:scale-95 transition-all shadow-2xl group overflow-hidden"
                   >
+                    <div className="absolute inset-x-0 top-0 h-1.5 bg-white/10 group-hover:bg-white/30 transition-colors" />
                     {renderCardBody(bc)}
                   </button>
                 ))}
               </div>
 
               <div className="mt-12 flex flex-col items-center">
-                <div className="text-sm text-white/50 mb-4 font-bold uppercase tracking-widest">Tap column to match</div>
+                <div className="text-[10px] text-white/30 mb-8 font-black uppercase tracking-[0.5em]">Select target column</div>
                 {deckCard && (
                   <motion.div
                     key={trials.current}
-                    initial={{ y: 50, opacity: 0 }}
+                    initial={{ y: 60, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="w-24 h-32 sm:w-32 sm:h-44 bg-white/10 rounded-xl border-2 border-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                    className="w-32 h-44 sm:w-36 sm:h-52 bg-white/10 backdrop-blur-3xl rounded-[3rem] border-4 border-white/80 flex items-center justify-center shadow-3xl relative overflow-hidden"
                   >
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
                     {renderCardBody(deckCard)}
                   </motion.div>
                 )}
@@ -224,13 +239,14 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
           )}
 
           {phase === 'outro' && (
-            <motion.div key="outro" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center mt-20">
-              <h3 className="text-3xl font-bold mb-2">Analyzing Set-Shifting...</h3>
-              <p className="text-white/60">Evaluating perseverative errors and adaptation speed.</p>
+            <motion.div key="outro" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center bg-black/80 backdrop-blur-3xl p-16 rounded-[4rem] border border-white/10 shadow-3xl flex flex-col items-center">
+              <div className="w-20 h-20 mb-10 mx-auto rounded-full border-[8px] border-emerald-500/10 border-t-emerald-500 animate-[spin_1s_linear_infinite]" />
+              <h3 className="text-4xl kaboom-text">Phase Complete</h3>
+              <p className="text-white/40 uppercase font-black text-[10px] tracking-[0.4em] mt-6">Measuring conceptual fluidity profile...</p>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </MiniGameChrome>
   );
 }

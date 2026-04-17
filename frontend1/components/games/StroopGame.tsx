@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GameTimer } from './GameTimer';
+import { MiniGameChrome } from './MiniGameChrome';
 import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
@@ -12,10 +12,10 @@ interface Props {
 }
 
 const COLORS = [
-  { name: 'RED', hex: '#f43f5e' },
-  { name: 'BLUE', hex: '#0ea5e9' },
-  { name: 'GREEN', hex: '#10b981' },
-  { name: 'YELLOW', hex: '#eab308' }
+  { name: 'RED', hex: '#FF0055' },
+  { name: 'BLUE', hex: '#00D4FF' },
+  { name: 'GREEN', hex: '#00FF9F' },
+  { name: 'YELLOW', hex: '#FBFF00' }
 ];
 
 export default function StroopGame({ assignment, onComplete, onExit }: Props) {
@@ -31,6 +31,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   const [currentWord, setCurrentWord] = useState('');
   const [currentColor, setCurrentColor] = useState('');
   const [isCongruent, setIsCongruent] = useState(true);
+  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
 
   const stimulusStartTime = useRef(0);
 
@@ -76,11 +77,14 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
       if (isCongruent) congruentRTs.current.push(rt);
       else incongruentRTs.current.push(rt);
       sounds.playSuccess();
+      setFeedback('correct');
     } else {
       errors.current++;
       sounds.playError();
+      setFeedback('wrong');
     }
 
+    setTimeout(() => setFeedback(null), 400);
     generateStimulus();
   };
 
@@ -119,70 +123,96 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#0a0f1d] text-white font-sans rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative">
-      <div className="flex items-center justify-between p-8 bg-white/[0.02] border-b border-white/5 relative z-20">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center text-3xl border border-white/10">
-            {assignment.theme.emoji}
-          </div>
-          <div>
-            <h2 className="text-xl font-black tracking-tight text-white/90">{assignment.gameName}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Selective Attention Shield</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-6">
-          {phase === 'playing' && <GameTimer durationMs={assignment.durationMs} timeLeftMs={timeLeft} />}
-          <button onClick={onExit} className="px-8 py-3 rounded-xl bg-white/5 hover:bg-red-500/10 hover:text-red-400 text-white/40 text-[10px] font-black uppercase tracking-widest transition-all border border-white/5">Exit</button>
-        </div>
-      </div>
-
-      <div className="flex-1 relative overflow-hidden bg-[radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.1)_0%,transparent_100%)]">
-        <AnimatePresence mode="wait">
+    <MiniGameChrome
+      assignment={assignment}
+      phase={phase}
+      timeLeftMs={timeLeft}
+      onExit={onExit}
+      bgImage="/backgrounds/cabin.jpg"
+      variant="cabin"
+      status="Focus Booster"
+    >
+      <div className="w-full h-full relative">
+        <AnimatePresence>
           {phase === 'intro' && (
-            <motion.div key="intro" className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="glass-card p-12 rounded-[3.5rem] max-w-xl border border-white/10 shadow-3xl bg-white/[0.03] backdrop-blur-3xl relative">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 rounded-[1.5rem] bg-blue-600 flex items-center justify-center text-4xl shadow-2xl shadow-blue-500/40 animate-pulse border-2 border-white/20">👁️</div>
-                <h3 className="text-4xl font-black mb-8 mt-6 bg-gradient-to-r from-white via-white/80 to-white/60 bg-clip-text text-transparent">Stroop Interference</h3>
-                <div className="space-y-6 text-white/60 font-semibold leading-relaxed text-sm">
-                  <p>Your cognitive control will be tested by conflicting semantic and visual signals.</p>
-                  <div className="p-8 rounded-[2rem] bg-white/[0.02] border border-white/10 mt-8 text-center">
-                    <div className="text-[10px] uppercase font-black tracking-[0.3em] text-blue-400 mb-4">The Primary Directive</div>
-                    <p className="text-lg text-white">Select the <span className="text-blue-400 font-black underline decoration-2 underline-offset-4">INK COLOR</span></p>
-                    <p className="text-xs mt-2 opacity-50">Ignore the text. Focus on the light.</p>
+            <motion.div key="intro" className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+              <div className="bg-black p-16 md:p-20 rounded-[4rem] max-w-2xl border border-white/10 shadow-3xl flex flex-col items-center">
+                <motion.div
+                  initial={{ scale: 0.5, rotate: -20, opacity: 0 }}
+                  animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                  className="w-24 h-24 rounded-3xl bg-amber-500 flex items-center justify-center text-5xl shadow-xl border-2 border-white/20 mb-10"
+                >
+                  🎨
+                </motion.div>
+
+                <h3 className="text-5xl kaboom-text mb-6">The Color Challenge</h3>
+
+                <div className="space-y-6 text-white/90 font-medium leading-relaxed">
+                  <p className="text-lg px-4 opacity-90">Stay focused on the <span className="text-amber-400 font-extrabold">paint</span>, not the word.</p>
+
+                  <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 mt-4 text-center">
+                    <div className="text-[10px] uppercase font-black tracking-[0.4em] text-amber-500 mb-3">Protocol</div>
+                    <p className="text-2xl text-white font-black uppercase tracking-tight">Pick the <span className="text-amber-400 underline underline-offset-8 decoration-4">COLOR</span> of the word</p>
                   </div>
                 </div>
-                <button onClick={startGame} className="w-full mt-12 py-7 rounded-[2rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] uppercase tracking-[0.4em] transition-all transform hover:scale-[1.03] active:scale-95 shadow-[0_20px_40px_-15px_rgba(14,165,233,0.5)] border border-white/20">Initiate Analysis</button>
+
+                <button
+                  onClick={startGame}
+                  className="w-full mt-10 py-7 rounded-3xl bg-amber-600 hover:bg-amber-400 text-white font-black text-sm uppercase tracking-[0.4em] transition-all transform hover:scale-[1.02] active:scale-95 shadow-2xl border border-white/20"
+                >
+                  Initiate Sequence
+                </button>
               </div>
             </motion.div>
           )}
 
           {phase === 'playing' && (
-            <motion.div key="playing" className="absolute inset-0 flex flex-col items-center justify-center p-12">
-              <motion.div
-                key={currentWord + currentColor}
-                initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                className="text-[9vw] font-black uppercase tracking-[0.2em] text-center mb-24 cursor-default select-none"
-                style={{ color: currentColor, textShadow: `0 0 50px ${currentColor}66` }}
-              >
-                {currentWord}
-              </motion.div>
+            <motion.div key="playing" className="absolute inset-0 flex flex-col items-center justify-center p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <div className="relative mb-24 flex flex-col items-center justify-center min-h-[220px]">
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    key={currentWord + currentColor}
+                    initial={{ scale: 0.8, opacity: 0, y: 15 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 1.1, opacity: 0, filter: 'blur(15px)' }}
+                    className="text-[11vw] font-black uppercase tracking-[-0.03em] text-center cursor-default select-none transition-all"
+                    style={{
+                      color: currentColor,
+                      textShadow: `0 0 50px ${currentColor}AA, 0 0 100px ${currentColor}33`,
+                      lineHeight: 0.8
+                    }}
+                  >
+                    {currentWord}
+                  </motion.div>
+                </AnimatePresence>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-4xl">
+                <AnimatePresence>
+                  {feedback && (
+                    <motion.div
+                      key="feedback"
+                      initial={{ opacity: 0, y: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, y: -100, scale: 1.5 }}
+                      exit={{ opacity: 0, scale: 2 }}
+                      className={`absolute font-black text-4xl uppercase italic tracking-tighter ${feedback === 'correct' ? 'text-green-400' : 'text-red-500'}`}
+                      style={{ textShadow: feedback === 'correct' ? '0 0 40px #4ade80' : '0 0 40px #ef4444' }}
+                    >
+                      {feedback === 'correct' ? 'PERFECT' : 'MISS!'}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-5xl">
                 {COLORS.map(c => (
                   <button
                     key={c.name}
                     onClick={() => handleSelection(c.hex)}
-                    className="relative group h-32 rounded-[2rem] p-1 flex items-center justify-center transition-all active:scale-95 overflow-hidden border border-white/10"
+                    className="relative group h-28 rounded-[2rem] p-1 flex items-center justify-center transition-all active:scale-90 overflow-hidden border border-white/10 bg-black/40 hover:bg-black/60 shadow-2xl"
                   >
-                    <div className="absolute inset-0 transition-opacity opacity-20 group-hover:opacity-40" style={{ backgroundColor: c.hex }} />
-                    <div className="relative text-[11px] font-black uppercase tracking-[0.3em] transition-colors" style={{ color: c.hex }}>
+                    <div className="absolute inset-x-0 top-0 h-[3px] bg-white/10 group-hover:bg-white/30 transition-colors" />
+                    <div className="relative text-sm font-black uppercase tracking-[0.3em] transition-colors" style={{ color: c.hex, textShadow: `0 0 15px ${c.hex}66` }}>
                       {c.name}
                     </div>
-                    <div className="absolute bottom-4 w-8 h-1 rounded-full opacity-30 group-hover:opacity-100 transition-all group-hover:w-16" style={{ backgroundColor: c.hex }} />
                   </button>
                 ))}
               </div>
@@ -190,19 +220,18 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
           )}
 
           {phase === 'outro' && (
-            <motion.div key="outro" className="absolute inset-0 flex flex-col items-center justify-center" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full border-[8px] border-blue-500/10 border-t-blue-500 animate-[spin_1.5s_linear_infinite]" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-blue-500/10 animate-pulse" />
+            <motion.div key="outro" className="absolute inset-0 flex flex-col items-center justify-center" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+              <div className="bg-black/80 backdrop-blur-3xl p-16 rounded-[4rem] flex flex-col items-center border border-white/10 shadow-3xl text-center">
+                <div className="relative mb-12">
+                  <div className="w-24 h-24 rounded-full border-[8px] border-amber-500/10 border-t-amber-500 animate-[spin_1s_linear_infinite]" />
                 </div>
+                <h3 className="text-4xl kaboom-text">Mission Complete</h3>
+                <p className="text-white/40 uppercase font-black text-xs tracking-[0.4em] mt-6">Analyzing focus metrics...</p>
               </div>
-              <h3 className="mt-10 text-3xl font-black text-white/90 tracking-[0.3em] uppercase animate-pulse">Calculating Interference</h3>
-              <p className="text-white/30 text-[10px] uppercase font-bold mt-4 tracking-widest">Processing Attentional Shift...</p>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </MiniGameChrome>
   );
 }
