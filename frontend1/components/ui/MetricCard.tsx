@@ -22,43 +22,65 @@ function getGameSpecificMetrics(insight: CognitiveInsight, result?: GameResult):
   const errors = result.errorCount ?? (result as any).error_count ?? 0;
   const raw = result.rawData || (result as any).raw_data || {};
 
+  // Data extraction helper with multi-key support
+  const get = (obj: any, keys: string[]) => {
+    for (const key of keys) {
+      if (obj[key] != null) return obj[key];
+    }
+    return null;
+  };
+
   switch (insight.cognitive) {
     case 'attention':
+      const accAtt = get(raw, ['accuracy', 'acc']);
+      const inRTAtt = get(raw, ['incongruentRT', 'incongruent_rt', 'incon_rt']);
+      const confRTAtt = get(raw, ['interferenceScale', 'interference_scale', 'interference']);
       return [
         { label: 'Mean LT', value: rtDisplay },
-        { label: 'Att Acc', value: (raw.accuracy ?? raw.accuracy) != null ? `${Math.round(((raw.accuracy ?? raw.accuracy) as number) * 100)}%` : `${Math.round(((total - errors) / total) * 100)}%` },
+        { label: 'Att Acc', value: accAtt != null ? `${Math.round(accAtt * 100)}%` : `${Math.round(((total - errors) / total) * 100)}%` },
         { label: 'Fails', value: `${errors}` },
-        { label: 'Incongruent RT', value: (raw.incongruentRT ?? raw.incongruent_rt) ? `${Math.round((raw.incongruentRT ?? raw.incongruent_rt) as number)}ms` : '—' },
-        { label: 'Interference', value: (raw.interferenceScale ?? raw.interference_scale) ? `${((raw.interferenceScale ?? raw.interference_scale) as number).toFixed(1)}x` : '—' },
+        { label: 'Incongruent RT', value: inRTAtt ? `${Math.round(inRTAtt)}ms` : '—' },
+        { label: 'Interference', value: confRTAtt ? `${Number(confRTAtt).toFixed(1)}x` : '—' },
       ];
     case 'memory':
+      const accMem = get(raw, ['accuracy', 'acc']);
+      const hitsMem = get(raw, ['hits', 'correct_hits']);
+      const faMem = get(raw, ['falsePositives', 'false_positives', 'fa']);
       return [
         { label: 'Mean RT', value: rtDisplay },
-        { label: 'Recall Acc', value: (raw.accuracy ?? raw.accuracy) != null ? `${Math.round(((raw.accuracy ?? raw.accuracy) as number) * 100)}%` : '—' },
-        { label: 'Hits', value: (raw.hits ?? raw.hits) != null ? `${raw.hits ?? raw.hits}` : `${total - errors}` },
-        { label: 'FA/Errors', value: (raw.falsePositives ?? raw.false_positives) != null ? `${raw.falsePositives ?? raw.false_positives}` : `${errors}` },
+        { label: 'Recall Acc', value: accMem != null ? `${Math.round(accMem * 100)}%` : '—' },
+        { label: 'Hits', value: hitsMem != null ? `${hitsMem}` : `${total - errors}` },
+        { label: 'FA/Errors', value: faMem != null ? `${faMem}` : `${errors}` },
         { label: 'N-Level', value: '2-Back' },
       ];
     case 'impulsivity':
+      const commImp = get(raw, ['commissionErrors', 'commission_errors', 'failed_inhib']);
+      const omImp = get(raw, ['omissionErrors', 'omission_errors', 'missed_go']);
+      const nogoImp = get(raw, ['totalNoGo', 'total_no_go', 'no_go_count']);
       return [
         { label: 'Mean RT', value: rtDisplay },
-        { label: 'Failed Inhib', value: (raw.commissionErrors ?? raw.commission_errors) != null ? `${raw.commissionErrors ?? raw.commission_errors}` : `${errors}` },
-        { label: 'Missed Go', value: (raw.omissionErrors ?? raw.omission_errors) != null ? `${raw.omissionErrors ?? raw.omission_errors}` : '—' },
+        { label: 'Failed Inhib', value: commImp != null ? `${commImp}` : `${errors}` },
+        { label: 'Missed Go', value: omImp != null ? `${omImp}` : '—' },
         { label: 'Total Trials', value: `${total}` },
-        { label: 'Control Rate', value: (raw.commissionErrors ?? raw.commission_errors) != null && (raw.totalNoGo ?? raw.total_no_go) ? `${Math.round((1 - ((raw.commissionErrors ?? raw.commission_errors) as number) / ((raw.totalNoGo ?? raw.total_no_go) as number)) * 100)}%` : '—' },
+        { label: 'Control Rate', value: commImp != null && nogoImp ? `${Math.round((1 - commImp / nogoImp) * 100)}%` : '—' },
       ];
     case 'flexibility':
+      const pesFlex = get(raw, ['perseverativeErrors', 'perseverative_errors', 'stickiness']);
+      const shiftFlex = get(raw, ['ruleShifts', 'rule_shifts', 'shifts']);
       return [
         { label: 'Mean RT', value: rtDisplay },
-        { label: 'Stickiness', value: (raw.perseverativeErrors ?? raw.perseverative_errors) != null ? `${raw.perseverativeErrors ?? raw.perseverative_errors}` : `${errors}` },
+        { label: 'Stickiness', value: pesFlex != null ? `${pesFlex}` : `${errors}` },
         { label: 'Successes', value: `${total - errors}` },
-        { label: 'Rule Shifts', value: (raw.ruleShifts ?? raw.rule_shifts) != null ? `${raw.ruleShifts ?? raw.rule_shifts}` : '—' },
+        { label: 'Rule Shifts', value: shiftFlex != null ? `${shiftFlex}` : '—' },
       ];
     case 'risk_behavior':
+      const pumpsBART = get(raw, ['avgPumps', 'avg_pumps', 'pumps']);
+      const popBART = get(raw, ['poppedRatio', 'popped_ratio', 'burst_rate']);
+      const scoreBART = get(raw, ['totalScore', 'total_score', 'score']);
       return [
-        { label: 'Avg Pumps', value: (raw.avgPumps ?? raw.avg_pumps) != null ? ((raw.avgPumps ?? raw.avg_pumps) as number).toFixed(1) : '—' },
-        { label: 'Burst Rate', value: (raw.poppedRatio ?? raw.popped_ratio) != null ? `${Math.round(((raw.poppedRatio ?? raw.popped_ratio) as number) * 100)}%` : '—' },
-        { label: 'Total Score', value: (raw.totalScore ?? raw.total_score) != null ? `${raw.totalScore ?? raw.total_score}pts` : '—' },
+        { label: 'Avg Pumps', value: pumpsBART != null ? Number(pumpsBART).toFixed(1) : '—' },
+        { label: 'Burst Rate', value: popBART != null ? `${Math.round(popBART * 100)}%` : '—' },
+        { label: 'Total Score', value: scoreBART != null ? `${scoreBART}pts` : '—' },
         { label: 'Successes', value: `${total - errors}` },
       ];
     default:
