@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameTimer } from './GameTimer';
+import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
 interface Props {
@@ -27,9 +28,12 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
   const [currentRuleIndex, setCurrentRuleIndex] = useState(0);
   const [correctStreak, setCorrectStreak] = useState(0);
   
-  const [trials, setTrials] = useState(0);
-  const [perseverativeErrors, setPerseverativeErrors] = useState(0); 
+  const trials = useRef(0);
+  const perseverativeErrors = useRef(0); 
+  const reactionTimes = useRef<number[]>([]);
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
+
+  const stimulusStartTime = useRef(0);
 
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -51,18 +55,20 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
     number: NUMBERS[Math.floor(Math.random() * NUMBERS.length)]
   });
 
+  const setNewDeckCard = () => {
+    setDeckCard(generateCard());
+    stimulusStartTime.current = Date.now();
+  };
+
   const startGame = () => {
     setPhase('playing');
-    
-    // Fixed base cards representing specific combos so the user has standard anchoring columns
     setBaseCards([
       { color: COLORS[0], shape: SHAPES[0], number: NUMBERS[0] },
       { color: COLORS[1], shape: SHAPES[1], number: NUMBERS[1] },
       { color: COLORS[2], shape: SHAPES[2], number: NUMBERS[2] },
       { color: COLORS[3], shape: SHAPES[3], number: NUMBERS[3] }
     ]);
-
-    setDeckCard(generateCard());
+    setNewDeckCard();
   };
 
   const endGame = () => {
@@ -72,9 +78,9 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
         cognitive: 'flexibility',
         gameId: 'wcst',
         durationMs: assignment.durationMs - timeLeft,
-        reactionTimeMs: [],
-        errorCount: perseverativeErrors,
-        totalActions: trials,
+        reactionTimeMs: reactionTimes.current,
+        errorCount: perseverativeErrors.current,
+        totalActions: trials.current,
         hesitationMs: 0,
         engagementScore: 100,
         decisionChanges: 0,
@@ -83,8 +89,8 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
         clickTimestamps: [],
         panicClickCount: 0,
         rawData: {
-          perseverativeErrors,
-          adaptationTime: 0 // Mock metric
+          perseverativeErrors: perseverativeErrors.current,
+          adaptationTime: 0
         }
       });
     }, 1500);
@@ -94,41 +100,36 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
     if (!deckCard) return;
 
     const currentRule = RULES[currentRuleIndex % RULES.length];
-    
     let isMatch = false;
     if (currentRule === 'color') isMatch = (deckCard.color === targetCard.color);
     if (currentRule === 'shape') isMatch = (deckCard.shape === targetCard.shape);
     if (currentRule === 'number') isMatch = (deckCard.number === targetCard.number);
 
-    setTrials(t => t + 1);
+    trials.current++;
 
     if (isMatch) {
       triggerFeedback('correct');
+      sounds.playSuccess();
       const newStreak = correctStreak + 1;
       setCorrectStreak(newStreak);
-      
-      // Hidden rule change after 5 correct matches (accelerated from clinical 10 for a mini-game)
-      if (newStreak >= 5) {
+      if (newStreak >= (trials.current > 30 ? 3 : 5)) {
         setCurrentRuleIndex(r => r + 1);
         setCorrectStreak(0);
       }
     } else {
       triggerFeedback('wrong');
+      sounds.playError();
       setCorrectStreak(0);
-      
-      // If they used the OLD rule when it just changed, it's a perseverative error
       const previousRule = RULES[(currentRuleIndex - 1 + RULES.length) % RULES.length];
       let matchPrevRule = false;
       if (previousRule === 'color') matchPrevRule = (deckCard.color === targetCard.color);
       if (previousRule === 'shape') matchPrevRule = (deckCard.shape === targetCard.shape);
       if (previousRule === 'number') matchPrevRule = (deckCard.number === targetCard.number);
-
-      if (matchPrevRule) {
-        setPerseverativeErrors(e => e + 1);
-      }
+      if (matchPrevRule) perseverativeErrors.current++;
     }
 
-    setDeckCard(generateCard());
+    reactionTimes.current.push(Date.now() - stimulusStartTime.current);
+    setNewDeckCard();
   };
 
   const triggerFeedback = (type: 'correct' | 'wrong') => {
@@ -145,15 +146,13 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
     if (shape === 'star') return <div className="text-xl leading-none" style={{ color }}>★</div>;
   };
 
-  const renderCardBody = (card: Card) => {
-    return (
-      <div className="grid grid-cols-2 gap-1 place-items-center">
-        {Array.from({ length: card.number }).map((_, i) => (
-          <div key={i}>{renderShape(card.shape, card.color)}</div>
-        ))}
-      </div>
-    );
-  };
+  const renderCardBody = (card: Card) => (
+    <div className="grid grid-cols-2 gap-1 place-items-center">
+      {Array.from({ length: card.number }).map((_, i) => (
+        <div key={i}>{renderShape(card.shape, card.color)}</div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">
@@ -179,7 +178,7 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
             <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-md text-center space-y-6 mt-10">
               <div className="text-5xl">{assignment.theme.emoji}</div>
               <h3 className="text-2xl font-bold">Rule Adaptation Test</h3>
-              <p className="text-white/70">Match the bottom card to one of the four top columns. The matching rule (color, shape, or number) is secret. Use feedback ("Correct" / "Wrong") to figure out the rule. <br/><br/><span className="text-emerald-400 font-bold">Warning: The rule will change without telling you!</span></p>
+              <p className="text-white/70">Match the bottom card to one of the four top columns. The matching rule is secret. Figuring it out is part of the challenge. <br/><br/><span className="text-emerald-400 font-bold">The rule will change as you progress!</span></p>
               <button onClick={startGame} className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold transition-all text-shadow">
                 Start Challenge
               </button>
@@ -188,8 +187,6 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
 
           {phase === 'playing' && (
              <motion.div key="playing" className="w-full h-full flex flex-col items-center justify-between py-10">
-               
-               {/* Feedback display */}
                <div className="h-8 absolute top-8">
                   {showFeedback && (
                     <div className={`text-2xl font-black ${showFeedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
@@ -198,7 +195,6 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
                   )}
                </div>
 
-               {/* Base Cards Columns */}
                <div className="flex justify-center gap-4 sm:gap-8 w-full mt-10">
                  {baseCards.map((bc, idx) => (
                    <button 
@@ -211,12 +207,11 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
                  ))}
                </div>
 
-               {/* Deck Card */}
                <div className="mt-12 flex flex-col items-center">
                  <div className="text-sm text-white/50 mb-4 font-bold uppercase tracking-widest">Tap column to match</div>
                  {deckCard && (
                     <motion.div 
-                      key={trials}
+                      key={trials.current}
                       initial={{ y: 50, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       className="w-24 h-32 sm:w-32 sm:h-44 bg-white/10 rounded-xl border-2 border-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]"
@@ -225,7 +220,6 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
                     </motion.div>
                  )}
                </div>
-
              </motion.div>
           )}
 

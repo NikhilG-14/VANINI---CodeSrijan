@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameTimer } from './GameTimer';
+import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
 interface Props {
@@ -20,12 +21,14 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
   const [currentLetterIndex, setCurrentLetterIndex] = useState(-1);
   const [responses, setResponses] = useState<'hit' | 'miss' | 'false_alarm' | 'correct_rejection'[]>([]);
   
-  const [hits, setHits] = useState(0);
-  const [falseAlarms, setFalseAlarms] = useState(0);
+  const hits = useRef(0);
+  const falseAlarms = useRef(0);
+  const reactionTimes = useRef<number[]>([]);
 
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
 
   const stepTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const stimulusStartTime = useRef(0);
   const N = 2; // Fixed 2-back for this implementation
 
   useEffect(() => {
@@ -57,17 +60,20 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
       }
       
       setCurrentLetterIndex(prev.length);
+      stimulusStartTime.current = Date.now();
       return [...prev, nextLetter];
     });
   };
 
   useEffect(() => {
     if (phase === 'playing' && currentLetterIndex >= 0) {
+      // Difficulty Scaling: 2000ms base, minus 50ms per hit, capped at 1200ms
+      const stepDuration = Math.max(1200, 2000 - (hits * 50));
       stepTimerRef.current = setTimeout(() => {
-        // Automatic advance after 2 seconds
+        // Automatic advance
         setShowFeedback(null);
         generateNextLetter();
-      }, 2000);
+      }, stepDuration);
     }
     return () => {
       if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
@@ -89,14 +95,14 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
       for (let i = N; i < sequence.length; i++) {
         if (sequence[i] === sequence[i - N]) expectedMatches++;
       }
-      const accuracy = expectedMatches === 0 ? 1 : Math.min(1, hits / expectedMatches);
+      const accuracy = expectedMatches === 0 ? 1 : Math.min(1, hits.current / expectedMatches);
 
       onComplete({
         cognitive: 'memory',
         gameId: 'n-back',
         durationMs: assignment.durationMs - timeLeft,
-        reactionTimeMs: [],
-        errorCount: falseAlarms,
+        reactionTimeMs: reactionTimes.current,
+        errorCount: falseAlarms.current,
         totalActions: sequence.length,
         hesitationMs: 0,
         engagementScore: 100,
@@ -107,8 +113,8 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
         panicClickCount: 0,
         rawData: {
           accuracy,
-          falsePositives: falseAlarms,
-          hits,
+          falsePositives: falseAlarms.current,
+          hits: hits.current,
         }
       });
     }, 1500);
@@ -118,18 +124,24 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
     if (currentLetterIndex < N) {
       setFalseAlarms(f => f + 1);
       triggerFeedback('wrong');
+      sounds.playError();
       return;
     }
 
     const current = sequence[currentLetterIndex];
     const past = sequence[currentLetterIndex - N];
+    const rt = Date.now() - stimulusStartTime.current;
 
     if (current === past) {
-      setHits(h => h + 1);
+      hits.current++;
+      reactionTimes.current.push(rt);
       triggerFeedback('correct');
+      sounds.playSuccess();
     } else {
-      setFalseAlarms(f => f + 1);
+      falseAlarms.current++;
+      reactionTimes.current.push(rt);
       triggerFeedback('wrong');
+      sounds.playError();
     }
   };
 

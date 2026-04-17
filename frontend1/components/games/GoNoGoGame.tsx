@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameTimer } from './GameTimer';
+import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
 interface Props {
@@ -14,15 +15,17 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
   const [phase, setPhase] = useState<'intro' | 'playing' | 'outro'>('intro');
   const [timeLeft, setTimeLeft] = useState(assignment.durationMs);
 
-  const [trials, setTrials] = useState(0);
-  const [commissionErrors, setCommissionErrors] = useState(0); // Tapped on No-Go
-  const [omissionErrors, setOmissionErrors] = useState(0); // Missed a Go
+  const trials = useRef(0);
+  const commissionErrors = useRef(0); // Tapped on No-Go
+  const omissionErrors = useRef(0); // Missed a Go
   const [targetType, setTargetType] = useState<'go' | 'nogo' | null>(null);
   
   const [showFeedback, setShowFeedback] = useState<'correct' | 'wrong' | null>(null);
 
   const activeStimulus = useRef(false);
   const userActed = useRef(false);
+  const stimulusStartTime = useRef(0);
+  const reactionTimes = useRef<number[]>([]);
   const stepTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -51,25 +54,28 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
       const isGo = Math.random() < 0.7;
       setTargetType(isGo ? 'go' : 'nogo');
       activeStimulus.current = true;
+      stimulusStartTime.current = Date.now();
 
-      // They have 1000ms to react
-      stepTimerRef.current = setTimeout(resolveRound, 1000);
+      // Difficulty Scaling: Response window shortens from 1000ms to 600ms
+      const responseWindow = Math.max(600, 1000 - (trials.current * 10));
+      stepTimerRef.current = setTimeout(resolveRound, responseWindow);
     }, delay);
   };
 
   const resolveRound = () => {
     if (phase !== 'playing') return;
     
-    setTrials(t => t + 1);
+    trials.current++;
 
     if (activeStimulus.current) {
       if (!userActed.current && targetType === 'go') {
         // Missed a Go (Omission error)
-        setOmissionErrors(e => e + 1);
+        omissionErrors.current++;
         triggerFeedback('wrong');
       } else if (!userActed.current && targetType === 'nogo') {
         // Correct Rejection
         triggerFeedback('correct');
+        sounds.playSuccess();
       }
     }
     
@@ -78,6 +84,8 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
 
   const triggerFeedback = (type: 'correct' | 'wrong') => {
     setShowFeedback(type);
+    if (type === 'wrong') sounds.playError();
+    else if (type === 'correct') sounds.playSuccess();
     setTimeout(() => setShowFeedback(null), 300);
   };
 
@@ -89,10 +97,12 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
     
     if (targetType === 'go') {
       // Hit (Correct)
+      const rt = Date.now() - stimulusStartTime.current;
+      reactionTimes.current.push(rt);
       triggerFeedback('correct');
     } else if (targetType === 'nogo') {
       // Commission error (Tapped on No-go)
-      setCommissionErrors(e => e + 1);
+      commissionErrors.current++;
       triggerFeedback('wrong');
     }
   };
@@ -111,9 +121,9 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
         cognitive: 'impulsivity',
         gameId: 'go-no-go',
         durationMs: assignment.durationMs - timeLeft,
-        reactionTimeMs: [],
-        errorCount: commissionErrors + omissionErrors,
-        totalActions: trials,
+        reactionTimeMs: reactionTimes.current,
+        errorCount: commissionErrors.current + omissionErrors.current,
+        totalActions: trials.current,
         hesitationMs: 0,
         engagementScore: 100,
         decisionChanges: 0,
@@ -122,8 +132,8 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
         clickTimestamps: [],
         panicClickCount: 0,
         rawData: {
-          commissionErrors,
-          omissionErrors
+          commissionErrors: commissionErrors.current,
+          omissionErrors: omissionErrors.current
         }
       });
     }, 1500);
@@ -174,7 +184,17 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
               )}
               
               {showFeedback === 'wrong' && (
-                <div className="absolute top-1/4 text-red-500 font-black text-2xl animate-pulse">Miss / Wrong!</div>
+                <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} className="absolute top-1/4 flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 text-2xl font-bold">✕</div>
+                  <div className="text-red-500 font-black text-2xl tracking-tighter uppercase italic">Ouch!</div>
+                </motion.div>
+              )}
+
+              {showFeedback === 'correct' && (
+                <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} className="absolute top-1/4 flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500 text-2xl font-bold">✓</div>
+                  <div className="text-emerald-500 font-black text-2xl tracking-tighter uppercase italic">Perfect!</div>
+                </motion.div>
               )}
             </motion.div>
           )}

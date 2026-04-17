@@ -7,7 +7,7 @@ interface Props {
   label?: string;
 }
 
-export function AvatarMessage({ message, emoji, label = 'VANI' }: Props) {
+export function AvatarMessage({ message, emoji, label = 'Therapy Assistant' }: Props) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
 

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameTimer } from './GameTimer';
+import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
 interface Props {
@@ -21,11 +22,11 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   const [phase, setPhase] = useState<'intro' | 'playing' | 'outro'>('intro');
   const [timeLeft, setTimeLeft] = useState(assignment.durationMs);
 
-  const [trials, setTrials] = useState(0);
-  const [errors, setErrors] = useState(0);
-  const [correct, setCorrect] = useState(0);
-  const [incongruentRTs, setIncongruentRTs] = useState<number[]>([]);
-  const [congruentRTs, setCongruentRTs] = useState<number[]>([]);
+  const trials = useRef(0);
+  const errors = useRef(0);
+  const correct = useRef(0);
+  const incongruentRTs = useRef<number[]>([]);
+  const congruentRTs = useRef<number[]>([]);
 
   const [currentWord, setCurrentWord] = useState('');
   const [currentColor, setCurrentColor] = useState('');
@@ -72,16 +73,16 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   const endGame = () => {
     setPhase('outro');
     setTimeout(() => {
-      const avgCon = congruentRTs.length ? congruentRTs.reduce((a,b)=>a+b,0)/congruentRTs.length : 0;
-      const avgIncon = incongruentRTs.length ? incongruentRTs.reduce((a,b)=>a+b,0)/incongruentRTs.length : 0;
+      const avgCon = congruentRTs.current.length ? congruentRTs.current.reduce((a,b)=>a+b,0)/congruentRTs.current.length : 0;
+      const avgIncon = incongruentRTs.current.length ? incongruentRTs.current.reduce((a,b)=>a+b,0)/incongruentRTs.current.length : 0;
 
       onComplete({
         cognitive: 'attention',
         gameId: 'stroop',
         durationMs: assignment.durationMs - timeLeft,
-        reactionTimeMs: [...congruentRTs, ...incongruentRTs],
-        errorCount: errors,
-        totalActions: trials,
+        reactionTimeMs: [...congruentRTs.current, ...incongruentRTs.current],
+        errorCount: errors.current,
+        totalActions: trials.current,
         hesitationMs: 0,
         engagementScore: 100,
         decisionChanges: 0,
@@ -92,7 +93,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
         rawData: {
           congruentRT: avgCon,
           incongruentRT: avgIncon,
-          accuracy: trials > 0 ? correct / trials : 0
+          accuracy: trials.current > 0 ? correct.current / trials.current : 0
         }
       });
     }, 1500);
@@ -102,17 +103,22 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
     const rt = Date.now() - stimulusStartTime.current;
     
     if (hex === currentColor) {
-      setCorrect(c => c + 1);
+      correct.current++;
+      sounds.playSuccess();
     } else {
-      setErrors(e => e + 1);
+      errors.current++;
+      sounds.playError();
     }
 
-    if (isCongruent) setCongruentRTs(prev => [...prev, rt]);
-    else setIncongruentRTs(prev => [...prev, rt]);
+    if (isCongruent) congruentRTs.current.push(rt);
+    else incongruentRTs.current.push(rt);
 
-    setTrials(t => t + 1);
+    trials.current++;
     generateStimulus();
   };
+
+  // Difficulty scaling: stimulate duration shortens as you get more correct
+  const stimulusDuration = Math.max(800, 2000 - (correct * 50));
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">

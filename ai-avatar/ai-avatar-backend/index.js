@@ -83,14 +83,14 @@ const audioFileToBase64 = async (file) => {
   return data.toString('base64');
 };
 
-async function callOllama(message) {
+async function callOllama(message, systemPrompt = SYSTEM_PROMPT) {
   try {
     const response = await fetch(`${ollamaUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: ollamaModel,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         prompt: message,
         stream: false,
         format: 'json'
@@ -106,13 +106,13 @@ async function callOllama(message) {
   }
 }
 
-async function callGemini(message) {
+async function callGemini(message, systemPrompt = SYSTEM_PROMPT) {
   if (!googleApiKey) throw new Error('Google API Key not configured');
   try {
     const genAI = new GoogleGenerativeAI(googleApiKey);
     const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-flash",
-        systemInstruction: SYSTEM_PROMPT
+        systemInstruction: systemPrompt
     });
     const result = await model.generateContent(message);
     const text = result.response.text();
@@ -134,11 +134,37 @@ app.post('/chat', async (req, res) => {
   }
 
   const userMessage = req.body.message;
+  const context = req.body.context; // Behavioral results from frontend1
+
+  const customSystemPrompt = context 
+    ? `${SYSTEM_PROMPT}\n\nUSER BEHAVIORAL CONTEXT:\n${context}`
+    : SYSTEM_PROMPT;
+
   if (!userMessage) {
+    // If we have context, generate a dynamic opening question
+    if (context) {
+      console.log('Generating dynamic greeting from context...');
+      messages = await callOllama("Greet the user proactively based on their behavioral results. Ask an insightful first question to start our therapy session. Keep it to 1 message.", customSystemPrompt);
+      if (messages) {
+        // Voice generation for the dynamic greeting
+        for (let i = 0; i < messages.length; i++) {
+           const m = messages[i];
+           const fn = `audios/message_${i}.mp3`;
+           await voice.textToSpeech(elevenLabsApiKey, voiceID, fn, m.text);
+           await lipSyncMessage(i);
+           m.audio = await audioFileToBase64(fn);
+           m.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
+        }
+        res.send({ messages });
+        return;
+      }
+    }
+
+    // Default Fallback Greeting
     res.send({
       messages: [
         {
-          text: 'Hey dear... How was your day?',
+          text: 'Hey there. I have been reviewing your behavioral map... I noticed some interesting patterns. How are you feeling after the assessment?',
           audio: await audioFileToBase64('audios/intro_0.wav'),
           lipsync: await readJsonTranscript('audios/intro_0.json'),
           facialExpression: 'smile',
@@ -167,14 +193,14 @@ app.post('/chat', async (req, res) => {
   // Try Ollama first (Local focus)
   if (useOllama) {
     console.log('Attempting to use Ollama (Llama 3)...');
-    messages = await callOllama(userMessage);
+    messages = await callOllama(userMessage, customSystemPrompt);
   }
 
   // Fallback to Gemini if Ollama failed or is disabled
   if (!messages) {
     console.log('Ollama failed or disabled. Falling back to Gemini...');
     try {
-      messages = await callGemini(userMessage);
+      messages = await callGemini(userMessage, customSystemPrompt);
     } catch (e) {
       console.error('Both Ollama and Gemini failed:', e.message);
       res.status(500).send({ error: 'All AI models failed' });

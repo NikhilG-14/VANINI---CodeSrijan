@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameTimer } from './GameTimer';
+import { sounds } from '@/lib/soundEffects';
 import type { GameResult, GameAssignment } from '@/lib/types';
 
 interface Props {
@@ -14,17 +15,22 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
   const [phase, setPhase] = useState<'intro' | 'playing' | 'outro'>('intro');
   const [timeLeft, setTimeLeft] = useState(assignment.durationMs);
 
+  // States for UI
   const [totalScore, setTotalScore] = useState(0);
   const [currentPumps, setCurrentPumps] = useState(0);
-  const [trials, setTrials] = useState(0);
   
-  const [poppedCount, setPoppedCount] = useState(0);
-  const [pumpHistory, setPumpHistory] = useState<number[]>([]);
-  
+  // Refs for stable telemetry and interval closures
+  const totalScoreRef = useRef(0);
+  const poppedCount = useRef(0);
+  const trials = useRef(0);
+  const pumpHistory = useRef<number[]>([]);
+  const reactionTimes = useRef<number[]>([]);
+
   const [balloonStatus, setBalloonStatus] = useState<'normal' | 'popped' | 'saved'>('normal');
 
   // Probability of pop increases with each pump.
   const popThreshold = useRef(Math.random() * 20 + 5); 
+  const stimulusStartTime = useRef(0);
 
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -48,7 +54,10 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
   const resetBalloon = () => {
     setCurrentPumps(0);
     setBalloonStatus('normal');
-    popThreshold.current = Math.random() * 20 + 5; // Pop capacity between 5 and 25 pumps
+    // Difficulty Scaling: Base range 5-25, shrinks as totalScore increases
+    const difficultyOffset = Math.min(10, Math.floor(totalScoreRef.current / 20));
+    popThreshold.current = Math.random() * (20 - difficultyOffset) + 5; 
+    stimulusStartTime.current = Date.now();
   };
 
   const handlePump = () => {
@@ -56,14 +65,20 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
     
     const newPumps = currentPumps + 1;
     setCurrentPumps(newPumps);
+    sounds.playTick();
+    
+    // Capture inter-pump RT
+    const rt = Date.now() - stimulusStartTime.current;
+    reactionTimes.current.push(rt);
+    stimulusStartTime.current = Date.now(); // reset for next pump
     
     // Check for pop
-    // Base probability logic: chance to pop is 1 / (maxCapacity - currentPumps)
-    // To simplify for casual game, we use fixed threshold
     if (newPumps >= popThreshold.current) {
       setBalloonStatus('popped');
-      setPoppedCount(c => c + 1);
-      setTrials(t => t + 1);
+      sounds.playPop();
+      poppedCount.current++;
+      trials.current++;
+      pumpHistory.current.push(0);
       setTimeout(resetBalloon, 1000);
     }
   };
@@ -72,9 +87,14 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
     if (balloonStatus !== 'normal' || currentPumps === 0) return;
     
     setBalloonStatus('saved');
-    setTotalScore(s => s + currentPumps);
-    setTrials(t => t + 1);
-    setPumpHistory(h => [...h, currentPumps]);
+    sounds.playSuccess();
+    
+    const gained = currentPumps;
+    totalScoreRef.current += gained;
+    setTotalScore(totalScoreRef.current);
+    
+    trials.current++;
+    pumpHistory.current.push(currentPumps);
     
     setTimeout(resetBalloon, 1000);
   };
@@ -83,17 +103,17 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
     setPhase('outro');
     
     setTimeout(() => {
-      const avgPumps = pumpHistory.length > 0 
-        ? pumpHistory.reduce((a,b)=>a+b,0) / pumpHistory.length 
+      const avgPumps = pumpHistory.current.length > 0 
+        ? pumpHistory.current.reduce((a,b)=>a+b,0) / pumpHistory.current.length 
         : 0;
 
       onComplete({
         cognitive: 'risk_behavior',
         gameId: 'bart',
         durationMs: assignment.durationMs - timeLeft,
-        reactionTimeMs: [],
-        errorCount: poppedCount,
-        totalActions: trials,
+        reactionTimeMs: reactionTimes.current,
+        errorCount: poppedCount.current,
+        totalActions: trials.current,
         hesitationMs: 0,
         engagementScore: 100,
         decisionChanges: 0,
@@ -103,8 +123,8 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
         panicClickCount: 0,
         rawData: {
           avgPumps,
-          poppedRatio: trials > 0 ? poppedCount / trials : 0,
-          totalScore
+          poppedRatio: trials.current > 0 ? poppedCount.current / trials.current : 0,
+          totalScore: totalScoreRef.current
         }
       });
     }, 1500);
@@ -161,7 +181,6 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
                       className="w-20 h-24 bg-gradient-to-br from-red-400 to-red-600 rounded-t-[50%] rounded-b-[40%] shadow-[0_0_40px_rgba(239,68,68,0.4)] border border-red-300/50"
                       style={{ originY: 1 }}
                     >
-                      {/* String */}
                       <div className="absolute top-[100%] left-1/2 w-[2px] h-20 bg-white/30 transform -translate-x-1/2" />
                     </motion.div>
                   )}

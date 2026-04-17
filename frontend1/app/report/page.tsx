@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CognitiveRadarChart } from '@/components/ui/CognitiveRadarChart';
 import { AvatarMessage } from '@/components/ui/AvatarMessage';
+import { MetricCard } from '@/components/ui/MetricCard';
 import { useGameStore } from '@/store/gameStore';
 import { calculateScores, getCognitiveInsights, getAvatarMessage } from '@/lib/cognitiveScoring';
 import { generateAvatarResponse, checkOllamaHealth, saveGameSession } from '@/lib/ollamaClient';
@@ -11,6 +12,7 @@ import { loadResults } from '@/lib/gameSession';
 import type { CognitiveInsight, CognitiveScores } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 import { VaniChat } from '@/components/ui/VaniChat';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -50,7 +52,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!computed) return;
-    const insightsData = getEmotionInsights(computed);
+    const insightsData = getCognitiveInsights(computed);
     const fallback = getAvatarMessage(computed);
 
     checkOllamaHealth().then(online => {
@@ -88,6 +90,18 @@ export default function ReportPage() {
     ? insights.reduce((a, b) => a.score >= b.score ? a : b)
     : null;
 
+  const handleConsultVani = useCallback(() => {
+    // Unicode-safe Base64 encoding for payloads with emojis
+    const json = JSON.stringify({
+      scores: computed,
+      insights: insights.slice(0, 3)
+    });
+    const payload = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (match, p1) => 
+      String.fromCharCode(parseInt(p1, 16))
+    ));
+    window.open(`http://localhost:5173/?sessionData=${payload}`, '_blank');
+  }, [computed, insights]);
+
   if (!computed || !insights.length) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-[#060a14]">
@@ -103,127 +117,138 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-[#060a14] selection:bg-violet-500/30">
+    <div className="w-full h-full overflow-y-auto bg-[#060a14] selection:bg-violet-500/30 font-sans">
       <div className="fixed top-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full opacity-10 blur-[150px] pointer-events-none"
         style={{ background: dominant?.color || '#7c3aed' }} />
 
-      <div className="max-w-4xl mx-auto px-6 py-16 flex flex-col gap-12">
-        {/* Header */}
-        <div className="text-center relative">
-          <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/10 mb-6">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
-            Analysis Verified
+      <div className="max-w-6xl mx-auto px-6 py-16 flex flex-col gap-24">
+        {/* Header Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center relative pt-12"
+        >
+          <div className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 mb-8 neon-glow-cyan">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399] animate-pulse" />
+            Vocal Profile Verified
           </div>
-          <h1 className="text-5xl md:text-6xl font-black text-white tracking-tighter mb-4">
-            Behavioral <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">Fingerprint</span>
+          <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter mb-6">
+            Cognitive <span className="text-gradient">Signature</span>
           </h1>
-          <p className="text-white/40 text-lg max-w-xl mx-auto font-medium">
-            Based on your interactions across {results.length} mini-games, here is your current emotional landscape.
+          <p className="text-white/40 text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+            Your behavioral patterns across {results.length} cognitive nodes have been synthesized into a unique performance dossier.
           </p>
+        </motion.div>
+
+        {/* Central Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Radar Visualization */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="lg:col-span-7 glass-card rounded-[3.5rem] p-4 min-h-[500px] flex items-center justify-center relative overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <div className="relative z-10 w-full flex flex-col items-center">
+               <CognitiveRadarChart insights={insights} size={450} />
+               <div className="mt-4 text-[10px] font-black text-white/20 uppercase tracking-[0.5em] animate-pulse">Neural Mapping Active</div>
+            </div>
+          </motion.div>
+
+          {/* Assistant Sidebar */}
+          <div className="lg:col-span-5 flex flex-col gap-6 h-full">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="glass-card rounded-[2.5rem] p-1 overflow-hidden"
+            >
+              <div className="bg-white/[0.03] p-6 border-b border-white/5 flex items-center justify-between">
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Assistant Assessment</span>
+                {ollamaOnline ? (
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-black tracking-widest uppercase flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Deep Logic Sync
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[9px] font-black tracking-widest uppercase">Hybrid Mode</span>
+                )}
+              </div>
+              <div className="p-4">
+                <AvatarMessage
+                  message={avatarMsg || "Compiling observation data..."}
+                  emoji={dominant?.emoji ?? '🧠'}
+                />
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex-1 glass-card rounded-[2.5rem] p-8 flex flex-col justify-center gap-6 group"
+            >
+              <h3 className="text-white font-black text-xl flex items-center gap-4">
+                <span className="w-1.5 h-6 bg-violet-500 rounded-full" />
+                Deeper Analysis
+              </h3>
+              <p className="text-white/50 text-sm leading-relaxed font-medium">
+                VANI has detected several subtle behavioral markers in your reaction patterns that warrant a direct consultation.
+              </p>
+              <button 
+                onClick={handleConsultVani}
+                className="w-full py-5 rounded-2xl bg-violet-600/90 hover:bg-violet-500 text-white font-black text-xs uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-10px_rgba(124,58,237,0.4)] flex items-center justify-center gap-3 group-hover:neon-glow-violet"
+              >
+                Launch 3D Consultation
+                <span className="text-xl">→</span>
+              </button>
+            </motion.div>
+          </div>
         </div>
 
-        {/* Insights Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 backdrop-blur-3xl shadow-2xl">
-          <div className="flex justify-center relative">
-             <div className="absolute inset-0 bg-violet-500/20 blur-[100px] rounded-full" />
-             <div className="relative z-10">
-               <EmotionRadarChart insights={insights} size={320} />
-             </div>
+        {/* The Science: Metrics Breakdown */}
+        <section className="space-y-12">
+          <div className="flex flex-col gap-4">
+            <h2 className="text-4xl font-black text-white tracking-tight">The <span className="text-gradient">Science</span> of You</h2>
+            <p className="text-white/40 font-medium">Behind every score is a stream of sub-second decisions and automatic responses.</p>
           </div>
-
-          <div className="flex flex-col gap-5">
-            <h3 className="text-white font-black text-xl mb-2 flex items-center gap-3">
-              <span className="w-2 h-8 bg-violet-500 rounded-full" />
-              Emotional Metrics
-            </h3>
-            {insights.map(ins => (
-              <div key={ins.emotion} className="group">
-                <div className="flex justify-between items-end mb-2">
-                   <div className="flex items-center gap-3">
-                     <span className="text-2xl grayscale group-hover:grayscale-0 transition-all">{ins.emoji}</span>
-                     <span className="text-white/60 text-[11px] font-black uppercase tracking-wider">{ins.label}</span>
-                   </div>
-                   <span className="text-white font-black text-xl" style={{ color: ins.color }}>{ins.score}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${ins.score}%`, background: `linear-gradient(90deg, ${ins.color}88, ${ins.color})`, boxShadow: `0 0 10px ${ins.color}44` }}
-                  />
-                </div>
-              </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {insights.map((ins, idx) => (
+              <MetricCard 
+                key={ins.cognitive} 
+                insight={ins} 
+                result={results.find(r => r.cognitive === ins.cognitive)}
+                index={idx}
+              />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* AI Analysis Message */}
-        <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-cyan-600 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
-          <div className="relative bg-[#0d1424] border border-white/10 rounded-[2.5rem] p-4">
-             <div className="flex items-center justify-between px-6 py-2 mb-2 border-b border-white/5">
-                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">AI Synthesis Engine</span>
-                {ollamaOnline && <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/> SYSTEM LIVE</span>}
-             </div>
-             <AvatarMessage
-               message={avatarMsg || "Compiling observation data..."}
-               emoji={dominant?.emoji ?? '🧠'}
-             />
+        {/* Contextual Chat */}
+        <section className="space-y-12 pb-24 border-t border-white/5 pt-24">
+          <div className="text-center">
+            <h2 className="text-4xl font-black text-white tracking-tight mb-4 italic">Interactive Discovery</h2>
+            <p className="text-white/40 max-w-xl mx-auto font-medium">
+              Ask VANI specifics about these metrics. She can explain how your reaction times correlate with real-world scenarios.
+            </p>
           </div>
-        </div>
-
-        {/* Detailed Dialogue with VANI */}
-        <div className="flex flex-col gap-8">
-           <div className="text-center">
-             <h2 className="text-3xl font-black text-white tracking-tight mb-2">Consult with <span className="text-violet-400">VANI</span></h2>
-             <p className="text-white/40 text-sm max-w-lg mx-auto">
-               VANI has access to your full behavioral dossier and past sessions. Discuss your results or ask for specific mindfulness techniques.
-             </p>
-           </div>
-           
-           <VaniChat scores={computed} insights={insights} />
-        </div>
-
-        {/* Action Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {insights.map(ins => (
-             <div 
-               key={ins.emotion} 
-               className="p-8 rounded-[2.5rem] border transition-all hover:bg-white/[0.04] group relative overflow-hidden"
-               style={{ background: `${ins.color}05`, borderColor: `${ins.color}15` }}
-             >
-               <div className="absolute top-0 right-0 p-4 opacity-5 text-8xl transition-all group-hover:opacity-10">{ins.emoji}</div>
-               <div className="relative z-10">
-                 <div className="flex items-center gap-4 mb-6">
-                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg transition-transform group-hover:scale-110" style={{ background: `${ins.color}22`, border: `1px solid ${ins.color}44` }}>
-                     {ins.emoji}
-                   </div>
-                   <div>
-                     <h4 className="text-white font-black text-sm tracking-wide uppercase">{ins.label}</h4>
-                     <p className="text-white/30 text-[10px] font-bold">SIG: {ins.score}%</p>
-                   </div>
-                 </div>
-                 <p className="text-white/60 text-sm leading-relaxed mb-6 font-medium">{ins.insight}</p>
-                 <div className="bg-white/5 rounded-2xl p-5 border border-white/5 flex gap-4 items-center">
-                   <div className="text-2xl">⚡</div>
-                   <p className="text-white/80 text-xs font-bold leading-relaxed pr-4">{ins.suggestion}</p>
-                 </div>
-               </div>
-             </div>
-          ))}
-        </div>
+          <div className="max-w-3xl mx-auto w-full">
+            <VaniChat scores={computed} insights={insights} />
+          </div>
+        </section>
 
         {/* Final Actions */}
         <div className="flex flex-col sm:flex-row gap-6 pb-20 mt-8">
           <button
             onClick={handleRestart}
-            className="flex-1 py-6 rounded-[2rem] bg-violet-600 font-pixel text-[10px] text-white hover:bg-violet-500 transition-all transform hover:-translate-y-1 active:scale-95 shadow-[0_20px_40px_-10px_rgba(124,58,237,0.5)]"
+            className="flex-1 py-6 rounded-[2rem] bg-violet-600/20 border border-violet-500/30 font-pixel text-[10px] text-violet-300 hover:bg-violet-600/30 transition-all transform hover:-translate-y-1 active:scale-95 shadow-xl"
           >
             RESTORE SYSTEM
           </button>
           <Link href="/"
             className="flex-1 py-6 rounded-[2rem] bg-white/5 border border-white/10 font-pixel text-[10px] text-white/40 hover:text-white/80 transition-all text-center hover:bg-white/10"
           >
-            DISCONNECT
+            DISCONNECT SESSION
           </Link>
         </div>
       </div>

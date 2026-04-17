@@ -5,7 +5,13 @@ const backendUrl = "http://localhost:3001";
 const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
-  const chat = async (message) => {
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState();
+  const [loading, setLoading] = useState(false);
+  const [cameraZoomed, setCameraZoomed] = useState(true);
+  const [sessionContext, setSessionContext] = useState(null);
+
+  const chat = async (text) => {
     setLoading(true);
     try {
       const data = await fetch(`${backendUrl}/chat`, {
@@ -13,7 +19,7 @@ export const ChatProvider = ({ children }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message: text, context: sessionContext }),
       });
       if (!data.ok) {
         throw new Error("Backend error");
@@ -22,15 +28,35 @@ export const ChatProvider = ({ children }) => {
       setMessages((messages) => [...messages, ...resp]);
     } catch (e) {
       console.error("Chat error:", e);
-      // Fallback message or error alert could be added here
     } finally {
       setLoading(false);
     }
   };
-  const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState();
-  const [loading, setLoading] = useState(false);
-  const [cameraZoomed, setCameraZoomed] = useState(true);
+
+  useEffect(() => {
+    // Check for behavioral session data in URL
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get('sessionData');
+    if (data) {
+      try {
+        const decoded = atob(data);
+        const parsed = JSON.parse(decoded);
+        const contextStr = Object.entries(parsed.scores)
+          .map(([k, v]) => `${k}: ${v}%`)
+          .join(', ');
+        
+        setSessionContext(contextStr);
+        
+        // Auto-greet after a short delay
+        setTimeout(() => {
+          chat(""); // Sends blank to trigger greeting with context
+        }, 1000);
+      } catch (e) {
+        console.error("Failed to parse session data:", e);
+      }
+    }
+  }, []);
+
   const onMessagePlayed = () => {
     setMessages((messages) => messages.slice(1));
   };

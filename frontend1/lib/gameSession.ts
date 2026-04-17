@@ -3,23 +3,23 @@ import type { CognitiveKey, GameAssignment, SessionConfig, GameTheme, GameResult
 // ─── Game Pool ───────────────────────────────────────────────────────────────
 const GAME_OPTIONS: Record<CognitiveKey, GameAssignment> = {
   attention: {
-    cognitive: 'attention', gameId: 'stroop', gameName: 'Stroop Task', durationMs: 90_000,
+    cognitive: 'attention', gameId: 'stroop', gameName: 'Stroop Task', durationMs: 60_000,
     theme: { bg: 'from-slate-900 via-blue-950 to-slate-900', accent: '#3b82f6', label: 'Selective Attention', emoji: '🎯', description: 'Select the color of the text, not the word it reads.' },
   },
   memory: {
-    cognitive: 'memory', gameId: 'n-back', gameName: 'N-Back Test', durationMs: 90_000,
+    cognitive: 'memory', gameId: 'n-back', gameName: 'N-Back Test', durationMs: 60_000,
     theme: { bg: 'from-slate-900 via-violet-950 to-slate-900', accent: '#8b5cf6', label: 'Working Memory', emoji: '🧠', description: 'Tap when the current letter matches the one 2 steps ago.' },
   },
   impulsivity: {
-    cognitive: 'impulsivity', gameId: 'go-no-go', gameName: 'Go / No-Go', durationMs: 90_000,
+    cognitive: 'impulsivity', gameId: 'go-no-go', gameName: 'Go / No-Go', durationMs: 60_000,
     theme: { bg: 'from-slate-900 via-red-950 to-slate-900', accent: '#ef4444', label: 'Impulsivity Control', emoji: '⚡', description: 'Tap for Green targets. Withhold tap for Red targets.' },
   },
   flexibility: {
-    cognitive: 'flexibility', gameId: 'wcst', gameName: 'Card Sort (WCST)', durationMs: 90_000,
+    cognitive: 'flexibility', gameId: 'wcst', gameName: 'Card Sort (WCST)', durationMs: 60_000,
     theme: { bg: 'from-slate-900 via-emerald-950 to-slate-900', accent: '#10b981', label: 'Cognitive Flexibility', emoji: '🧩', description: 'Match cards to columns. The matching rule will change secretly.' },
   },
   risk_behavior: {
-    cognitive: 'risk_behavior', gameId: 'bart', gameName: 'Balloon Task', durationMs: 90_000,
+    cognitive: 'risk_behavior', gameId: 'bart', gameName: 'Balloon Task', durationMs: 60_000,
     theme: { bg: 'from-slate-900 via-amber-950 to-slate-900', accent: '#f59e0b', label: 'Risk Behavior', emoji: '🎈', description: 'Pump balloons for points. Stop before they pop to save them.' },
   },
 };
