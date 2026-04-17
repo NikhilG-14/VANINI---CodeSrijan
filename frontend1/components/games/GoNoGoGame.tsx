@@ -133,7 +133,9 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
         panicClickCount: 0,
         rawData: {
           commissionErrors: commissionErrors.current,
-          omissionErrors: omissionErrors.current
+          omissionErrors: omissionErrors.current,
+          // totalNoGo lets the scoring engine compute accurate impulsivity rate
+          totalNoGo: Math.round(trials.current * 0.3) || commissionErrors.current + 1
         }
       });
     }, 1500);

@@ -118,7 +118,7 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
   };
 
   // Difficulty scaling: stimulate duration shortens as you get more correct
-  const stimulusDuration = Math.max(800, 2000 - (correct * 50));
+  const stimulusDuration = Math.max(800, 2000 - (correct.current * 50));
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-900/90 text-white font-sans rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border border-white/10 shadow-2xl relative">

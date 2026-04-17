@@ -68,7 +68,7 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
   useEffect(() => {
     if (phase === 'playing' && currentLetterIndex >= 0) {
       // Difficulty Scaling: 2000ms base, minus 50ms per hit, capped at 1200ms
-      const stepDuration = Math.max(1200, 2000 - (hits * 50));
+      const stepDuration = Math.max(1200, 2000 - (hits.current * 50));
       stepTimerRef.current = setTimeout(() => {
         // Automatic advance
         setShowFeedback(null);
@@ -122,7 +122,7 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
 
   const handleMatchCall = () => {
     if (currentLetterIndex < N) {
-      setFalseAlarms(f => f + 1);
+      falseAlarms.current++;
       triggerFeedback('wrong');
       sounds.playError();
       return;
