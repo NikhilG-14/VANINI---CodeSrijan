@@ -148,7 +148,8 @@ app.post('/chat', async (req, res) => {
   let masterMemoir = "";
   if (userId) {
     try {
-      const memoirRes = await fetch(`http://localhost:8000/user/memoir/${userId}`);
+      const coreBackendUrl = process.env.CORE_BACKEND_URL || 'http://localhost:8000';
+      const memoirRes = await fetch(`${coreBackendUrl}/user/memoir/${userId}`);
       if (memoirRes.ok) {
         const memoirData = await memoirRes.json();
         masterMemoir = memoirData?.master_summary || "";

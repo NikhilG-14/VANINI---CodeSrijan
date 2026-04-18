@@ -28,7 +28,7 @@ const AVATAR_APP_URL = process.env.NEXT_PUBLIC_AVATAR_APP_URL ?? 'http://localho
 const traceResults = (results: any[]) => {
   console.table(results.map(r => ({
     game: r.gameId,
-    rt: r.reactionTimeMs?.length ? (r.reactionTimeMs.reduce((a:number,b:number)=>a+b,0)/r.reactionTimeMs.length).toFixed(0) : '-',
+    rt: r.reactionTimeMs?.length ? (r.reactionTimeMs.reduce((a: number, b: number) => a + b, 0) / r.reactionTimeMs.length).toFixed(0) : '-',
     errors: r.errorCount,
     actions: r.totalActions,
     keys: Object.keys(r.rawData || {})
@@ -80,10 +80,10 @@ export default function ReportPage() {
     const toNum = (v: any, fallback: number) =>
       typeof v === 'number' && isFinite(v) ? v : fallback;
     return {
-      attention:     toNum(value.attention,     50),
-      memory:        toNum(value.memory,        50),
-      impulsivity:   toNum(value.impulsivity,   20),
-      flexibility:   toNum(value.flexibility,   50),
+      attention: toNum(value.attention, 50),
+      memory: toNum(value.memory, 50),
+      impulsivity: toNum(value.impulsivity, 20),
+      flexibility: toNum(value.flexibility, 50),
       risk_behavior: toNum(value.risk_behavior, 30),
     };
   };
@@ -99,7 +99,7 @@ export default function ReportPage() {
       if (finalResults.length) {
         console.log('%c[SESSION TRACE] Active Store Results:', 'background: #222; color: #10b981; font-weight: bold; padding: 2px 4px;');
         traceResults(finalResults);
-        
+
         scoresToUse = calculateScores(finalResults);
         saveGameSession(vimid, finalResults, scoresToUse).then(() => {
           getSessionReport(vimid).then(rep => !cancelled && setReportData(rep));
@@ -157,13 +157,11 @@ export default function ReportPage() {
       if (!online) { setAvatarMsg(fallback); return; }
       const partialCount = resolvedResults.filter(r => r.quitEarly).length;
       const partialGames = resolvedResults.filter(r => r.quitEarly).map(r => r.gameId).join(', ');
-      const prompt = `I just completed my assessment. Analyze my behavioral fingerprint. ${
-        partialCount > 0 
-          ? `NOTE: I quit ${partialCount} nodes early (${partialGames}). Adjust your clinical assessment to account for this incomplete data.` 
+      const prompt = `I just completed my assessment. Analyze my behavioral fingerprint. ${partialCount > 0
+          ? `NOTE: I quit ${partialCount} nodes early (${partialGames}). Adjust your clinical assessment to account for this incomplete data.`
           : ''
-      }`;
+        }`;
 
-      let streamed = '';
       generateAvatarResponse(
         prompt,
         computed, insightsData, undefined,
@@ -209,7 +207,7 @@ export default function ReportPage() {
   if (!ready) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-[#060a14] relative overflow-hidden">
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
           style={{ backgroundImage: 'url("/backgrounds/report-bg.jpg")' }}
         />
@@ -232,12 +230,12 @@ export default function ReportPage() {
 
       {/* Decorative background – fixed so it doesn't affect layout */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden ring-1 ring-inset ring-white/10">
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
           style={{ backgroundImage: 'url("/backgrounds/report-bg.jpg")' }}
         />
         <div className="absolute inset-0 bg-[#060a14]/80 backdrop-blur-[2px]" />
-        <div 
+        <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-[0.15] blur-[160px]"
           style={{ background: dominant?.color ?? '#7c3aed' }}
         />
@@ -296,10 +294,10 @@ export default function ReportPage() {
                 </span>{' '}
                 synthesized into a unique performance dossier.
               </p>
-              
+
               {/* Progress Bar */}
               <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden mt-2 relative">
-                <div 
+                <div
                   className="absolute inset-y-0 left-0 bg-violet-500 transition-all duration-1000"
                   style={{ width: `${(resolvedResults.length / 5) * 100}%` }}
                 />
@@ -419,11 +417,10 @@ export default function ReportPage() {
                   return (
                     <div
                       key={key}
-                      className={`rounded-lg border p-5 flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 ${
-                        improved
+                      className={`rounded-lg border p-5 flex flex-col gap-2 transition-transform duration-200 hover:-translate-y-1 ${improved
                           ? 'bg-emerald-500/[0.06] border-emerald-500/25'
                           : 'bg-rose-500/[0.06] border-rose-500/25'
-                      }`}
+                        }`}
                     >
                       <span className="text-[9px] uppercase font-bold tracking-widest text-white/35">
                         {key.replace(/_/g, ' ')}

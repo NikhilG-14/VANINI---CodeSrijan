@@ -32,3 +32,6 @@ ai-avatar/ai-avatar-backend/audios/*.json
 # IDE
 .vscode/
 .idea/
+venv/
+.venv/
+__pycache__/
