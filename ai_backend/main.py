@@ -52,7 +52,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:3000")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -151,7 +151,8 @@ async def encode_text_in_image_endpoint(
         encoded_image.save(output_path, format="PNG")
         
         # Return the local URL instead of the file stream for consistency with the frontend expectations
-        local_url = f"http://localhost:8000/uploads/{filename}"
+        self_url = os.getenv("SELF_URL", "http://localhost:8000")
+        local_url = f"{self_url}/uploads/{filename}"
         return {"encoded_image_url": local_url}
     except Exception as e:
         raise HTTPException(
@@ -286,7 +287,8 @@ async def generate_image(data: dict):
             f.write(image_data)
         
         # Local access URL
-        local_access_url = f"http://localhost:8000/uploads/{filename}"
+        self_url = os.getenv("SELF_URL", "http://localhost:8000")
+        local_access_url = f"{self_url}/uploads/{filename}"
         
         return {"image_urls": [local_access_url]}
     except Exception as e:

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+const OLLAMA_HOST = process.env.OLLAMA_HOST || '';
 const AVATAR_MODEL = process.env.AVATAR_MODEL || 'llama3';
 
 export const chatWithAvatar = async (req: Request, res: Response) => {

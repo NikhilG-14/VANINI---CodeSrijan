@@ -1,10 +1,10 @@
 import type { CognitiveScores, CognitiveInsight, GameResult } from './types';
 import { useUserStore } from '@/store/userStore';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
-const OLLAMA_BASE = process.env.NEXT_PUBLIC_OLLAMA_BASE ?? 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.NEXT_PUBLIC_OLLAMA_MODEL ?? 'llama3.2';
+const OLLAMA_BASE = process.env.NEXT_PUBLIC_OLLAMA_BASE || '';
+const OLLAMA_MODEL = process.env.NEXT_PUBLIC_OLLAMA_MODEL || 'llama3';
 
 type SessionResultLite = {
   gameId?: string;

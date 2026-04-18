@@ -13,7 +13,7 @@ from ai_backend.prompts import (INSPIRATION_POEM_PROMPT,
 
 load_dotenv()
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 USE_OLLAMA = os.getenv("USE_OLLAMA", "true").lower() == "true"
 

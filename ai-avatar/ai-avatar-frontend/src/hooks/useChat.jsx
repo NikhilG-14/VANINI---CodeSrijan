@@ -16,7 +16,7 @@ export const ChatProvider = ({ children }) => {
     setLoading(true);
     const contextToUse = overrideContext || sessionContext;
     const userToUse = overrideUserId || userId;
-    
+
     try {
       const history = messages.slice(-4).map(m => ({
         role: m.fromUser ? "user" : "assistant",
@@ -28,9 +28,9 @@ export const ChatProvider = ({ children }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          message: text, 
-          context: contextToUse, 
+        body: JSON.stringify({
+          message: text,
+          context: contextToUse,
           userId: userToUse,
           history: history
         }),
@@ -56,7 +56,7 @@ export const ChatProvider = ({ children }) => {
       try {
         const decoded = decodeURIComponent(atob(dataParam));
         const parsed = JSON.parse(decoded);
-        
+
         // Extract vimid (UserId) for deep memory fetch
         if (parsed.vimid) {
           setUserId(parsed.vimid);
@@ -66,14 +66,14 @@ export const ChatProvider = ({ children }) => {
         const scoreStr = Object.entries(parsed.scores || {})
           .map(([k, v]) => `${k.toUpperCase()} focus level: ${v}%`)
           .join(', ');
-        
+
         const telStr = (parsed.telemetry || [])
           .map(t => `${t.game} session (Reaction Time: ${t.rt}ms, Error count: ${t.errors})`)
           .join('; ');
 
         const finalContext = `[HISTORICAL_COGNITIVE_MEMOIR]:\n(Refer to this as the user's journey baseline)\n\n[NEW_SESSION_METRICS]:\n(Cite specific examples from this data)\nScores: ${scoreStr}\nTelemetry: ${telStr}`;
         setSessionContext(finalContext);
-        
+
         // Auto-greet after a short delay using the FRESH context directly
         setTimeout(() => {
           chat("", finalContext, parsed.vimid); // Pass directly to avoid state closure delay
