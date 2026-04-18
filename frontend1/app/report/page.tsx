@@ -23,6 +23,8 @@ import { useUserStore } from '@/store/userStore';
 import { motion } from 'framer-motion';
 import { GameDiagnosticModal } from '@/components/ui/GameDiagnosticModal';
 
+const AVATAR_APP_URL = process.env.NEXT_PUBLIC_AVATAR_APP_URL ?? 'http://localhost:5173';
+
 export default function ReportPage() {
   const router = useRouter();
   const results = useGameStore(s => s.results);
@@ -170,7 +172,7 @@ export default function ReportPage() {
     const payload = btoa(
       encodeURIComponent(JSON.stringify({ scores: computed, insights, telemetry, vimid }))
     );
-    window.open(`http://localhost:5173/?sessionData=${payload}`, '_blank');
+    window.open(`${AVATAR_APP_URL}/?sessionData=${payload}`, '_blank');
   }, [computed, insights, resolvedResults]);
 
   const dominant = insights.length

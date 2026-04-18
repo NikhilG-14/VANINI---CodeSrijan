@@ -43,6 +43,7 @@ interface GameState {
   
   // ── Floating Text ──────────────────────────
   texts: any[];
+  shouldAnimateLevelComplete: boolean;
 
   // ── Actions ────────────────────────────────
   movePlayer: (dir: Direction) => void;

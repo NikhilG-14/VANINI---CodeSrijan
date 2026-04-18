@@ -4,6 +4,7 @@ import { generateAvatarResponse, saveChatMessage, getUserDossier } from '@/lib/o
 import type { UserDossier } from '@/lib/ollamaClient';
 import type { CognitiveScores, CognitiveInsight } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
+import { motion } from 'framer-motion';
 
 interface Message {
   role: 'user' | 'assistant';
