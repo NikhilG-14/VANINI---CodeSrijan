@@ -79,10 +79,12 @@ export interface CognitiveScores {
   impulsivity: number;
   flexibility: number;
   risk_behavior: number;
+  [key: string]: number;
 }
 
 export interface CognitiveInsight {
   cognitive: CognitiveKey;
+  gameId: string;
   score: number;
   label: string;
   gameName?: string;

@@ -14,6 +14,7 @@ import {
   getSessionReport,
   getSessionHistory,
   generateGameDiagnostic,
+  syncMasterMemoir,
   type SessionReport,
 } from '@/lib/ollamaClient';
 import { loadResults } from '@/lib/gameSession';

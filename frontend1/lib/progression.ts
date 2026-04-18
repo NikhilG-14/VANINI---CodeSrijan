@@ -1,14 +1,14 @@
-import type { EmotionKey, ZoneDef, Vec2 } from './types';
+import type { CognitiveKey, ZoneDef, Vec2 } from './types';
 
 export interface LevelNode {
   id: string;
   index: number;
   x: number; // 0-100 percentage of map width
   y: number; // 0-100 percentage of map height
-  emotion: EmotionKey;
+  cognitive: CognitiveKey;
   label: string;
   buildingEmoji: string;
-  description: string;
+  description?: string;
   color: string;
   gameId: string;
 }

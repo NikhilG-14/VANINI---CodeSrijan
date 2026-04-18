@@ -92,36 +92,36 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
   };
 }
 
-const META: Record<CognitiveKey, { label: string; domainTitle: string; definition: string; color: string; emoji: string; gameName: string }> = {
+const META: Record<CognitiveKey, { label: string; domainTitle: string; definition: string; color: string; emoji: string; gameName: string; gameId: string }> = {
   attention: { 
     label: 'Emotional Focus',   
     domainTitle: 'Sustained Vigilant Control',
     definition: 'Selection of relevant stimuli while suppressing irrelevant emotional noise.',
-    color: '#3b82f6', emoji: '🎯', gameName: 'Stroop Lab' 
+    color: '#3b82f6', emoji: '🎯', gameName: 'Stroop Lab', gameId: 'stroop'
   },
   memory: { 
     label: 'Mental Capacity',    
     domainTitle: 'Iterative Working Memory',
     definition: 'Hold and manipulate complex information strings over a temporal sequence.',
-    color: '#8b5cf6', emoji: '🧠', gameName: 'Nexus Memory' 
+    color: '#8b5cf6', emoji: '🧠', gameName: 'Nexus Memory', gameId: 'n-back'
   },
   impulsivity: { 
     label: 'Emotional Balance', 
     domainTitle: 'Inhibitory Motor Regulation',
     definition: 'Capacity to withhold automatic physiological responses to non-target stressors.',
-    color: '#ef4444', emoji: '⚡', gameName: 'Glimpse Control' 
+    color: '#ef4444', emoji: '⚡', gameName: 'Glimpse Control', gameId: 'go-no-go'
   },
   flexibility: { 
     label: 'Adaptability',      
     domainTitle: 'Cognitive Set Shifting',
     definition: 'Speed of behavioral adaptation when environmental "rules" or goals change.',
-    color: '#10b981', emoji: '🧩', gameName: 'Pattern Shift' 
+    color: '#10b981', emoji: '🧩', gameName: 'Pattern Shift', gameId: 'wcst'
   },
   risk_behavior: { 
     label: 'Confidence Index',  
     domainTitle: 'Threshold Decision Calibration',
     definition: 'Risk assessment accuracy based on cumulative reward/burst probability.',
-    color: '#f59e0b', emoji: '🎈', gameName: 'Aggression Flow' 
+    color: '#f59e0b', emoji: '🎈', gameName: 'Aggression Flow', gameId: 'bart'
   },
 };
 
@@ -165,9 +165,9 @@ export function getCognitiveInsights(scores: CognitiveScores): CognitiveInsight[
   return (Object.keys(scores) as CognitiveKey[]).map(cognitive => {
     const score = Math.round(scores[cognitive]);
     const lv = level(score);
-    const { label, domainTitle, definition, color, emoji, gameName } = META[cognitive];
+    const { label, domainTitle, definition, color, emoji, gameName, gameId } = META[cognitive];
     const { insight, suggestion } = INSIGHTS[cognitive][lv];
-    return { cognitive, score, label, domainTitle, definition, gameName, color, emoji, insight, suggestion };
+    return { cognitive, score, label, domainTitle, definition, gameName, gameId, color, emoji, insight, suggestion };
   });
 }
 

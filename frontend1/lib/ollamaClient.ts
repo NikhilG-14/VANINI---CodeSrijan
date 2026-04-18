@@ -1,4 +1,4 @@
-import type { CognitiveScores, CognitiveInsight } from './types';
+import type { CognitiveScores, CognitiveInsight, GameResult } from './types';
 import { useUserStore } from '@/store/userStore';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
@@ -15,9 +15,9 @@ type SessionResultLite = {
   rawData?: Record<string, unknown>;
 };
 
-type SessionHistoryEntry = {
-  scores?: Record<string, number>;
-  results?: SessionResultLite[];
+export type SessionHistoryEntry = {
+  scores?: CognitiveScores;
+  results?: GameResult[];
 };
 
 type ChatHistoryEntry = {
@@ -42,7 +42,7 @@ export type SessionReport = {
 export type SessionHistoryResponse = {
   user_id: string;
   count: number;
-  sessions: Record<string, unknown>[];
+  sessions: SessionHistoryEntry[];
 };
 
 function buildSystemPrompt(
@@ -329,8 +329,8 @@ export async function saveChatMessage(userId: string, role: 'user' | 'assistant'
 
 export async function saveGameSession(
   userId: string,
-  results: SessionResultLite[],
-  scores: Record<string, number>,
+  results: GameResult[],
+  scores: CognitiveScores,
   startedAt?: number
 ) {
   try {
