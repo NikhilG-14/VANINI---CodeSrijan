@@ -88,7 +88,11 @@ export default function BARTGame({ assignment, onComplete, onExit }: Props) {
         errorCount: poppedCount.current, totalActions: trials.current,
         hesitationMs: 0, engagementScore: 100, decisionChanges: 0, quitEarly: false,
         performanceDrop: 0, clickTimestamps: [], panicClickCount: 0,
-        rawData: { avgPumps, poppedRatio: trials.current > 0 ? poppedCount.current / trials.current : 0, totalScore: totalScoreRef.current }
+        rawData: { 
+          avgPumps, 
+          poppedRatio: trials.current > 0 ? poppedCount.current / trials.current : 0, 
+          totalScore: totalScoreRef.current 
+        }
       });
     }, 1500);
   };

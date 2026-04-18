@@ -90,7 +90,9 @@ export default function WCSTGame({ assignment, onComplete, onExit }: Props) {
         panicClickCount: 0,
         rawData: {
           perseverativeErrors: perseverativeErrors.current,
-          adaptationTime: 0
+          ruleShifts: currentRuleIndex,
+          totalTrials: trials.current,
+          adaptationTime: reactionTimes.current.length ? Math.round(reactionTimes.current.reduce((a, b) => a + b, 0) / reactionTimes.current.length) : 0
         }
       });
     }, 1500);

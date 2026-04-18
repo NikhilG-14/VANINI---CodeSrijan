@@ -72,10 +72,12 @@ export default function StroopGame({ assignment, onComplete, onExit }: Props) {
     const rt = Date.now() - stimulusStartTime.current;
     trials.current++;
 
+    // Always push RT to ensure "Mean LT" is calculated from total effort
+    if (isCongruent) congruentRTs.current.push(rt);
+    else incongruentRTs.current.push(rt);
+
     if (hex === currentColor) {
       correct.current++;
-      if (isCongruent) congruentRTs.current.push(rt);
-      else incongruentRTs.current.push(rt);
       sounds.playSuccess();
       setFeedback('correct');
     } else {

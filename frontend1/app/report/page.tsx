@@ -25,6 +25,16 @@ import { GameDiagnosticModal } from '@/components/ui/GameDiagnosticModal';
 
 const AVATAR_APP_URL = process.env.NEXT_PUBLIC_AVATAR_APP_URL ?? 'http://localhost:5173';
 
+const traceResults = (results: any[]) => {
+  console.table(results.map(r => ({
+    game: r.gameId,
+    rt: r.reactionTimeMs?.length ? (r.reactionTimeMs.reduce((a:number,b:number)=>a+b,0)/r.reactionTimeMs.length).toFixed(0) : '-',
+    errors: r.errorCount,
+    actions: r.totalActions,
+    keys: Object.keys(r.rawData || {})
+  })));
+};
+
 export default function ReportPage() {
   const router = useRouter();
   const results = useGameStore(s => s.results);
@@ -87,6 +97,9 @@ export default function ReportPage() {
       let scoresToUse: CognitiveScores | null = null;
 
       if (finalResults.length) {
+        console.log('%c[SESSION TRACE] Active Store Results:', 'background: #222; color: #10b981; font-weight: bold; padding: 2px 4px;');
+        traceResults(finalResults);
+        
         scoresToUse = calculateScores(finalResults);
         saveGameSession(vimid, finalResults, scoresToUse).then(() => {
           getSessionReport(vimid).then(rep => !cancelled && setReportData(rep));
@@ -94,10 +107,15 @@ export default function ReportPage() {
       } else {
         const saved = loadResults();
         if (saved?.results?.length) {
+          console.log('%c[SESSION TRACE] Recovered from LocalStorage:', 'background: #222; color: #3b82f6; font-weight: bold; padding: 2px 4px;');
+          traceResults(saved.results);
           finalResults = saved.results;
           scoresToUse = calculateScores(finalResults);
         }
       }
+
+      setResolvedResults(finalResults);
+
 
       if (!scoresToUse) {
         const history = await getSessionHistory(vimid);
@@ -137,9 +155,17 @@ export default function ReportPage() {
     checkOllamaHealth().then(online => {
       setOllamaOnline(online);
       if (!online) { setAvatarMsg(fallback); return; }
+      const partialCount = resolvedResults.filter(r => r.quitEarly).length;
+      const partialGames = resolvedResults.filter(r => r.quitEarly).map(r => r.gameId).join(', ');
+      const prompt = `I just completed my assessment. Analyze my behavioral fingerprint. ${
+        partialCount > 0 
+          ? `NOTE: I quit ${partialCount} nodes early (${partialGames}). Adjust your clinical assessment to account for this incomplete data.` 
+          : ''
+      }`;
+
       let streamed = '';
       generateAvatarResponse(
-        'I just completed my assessment. Analyze my behavioral fingerprint.',
+        prompt,
         computed, insightsData, undefined,
         chunk => { streamed += chunk; setAvatarMsg(streamed); }
       ).then(full => {
@@ -239,9 +265,17 @@ export default function ReportPage() {
             animate={{ opacity: 1, y: 0 }}
             className="w-full flex flex-col items-center text-center gap-5"
           >
-            <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 shadow-[0_0_20px_rgba(52,211,153,0.08)]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-pulse" />
-              Analysis Verified
+            <div className="flex gap-4">
+              <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 shadow-[0_0_20px_rgba(52,211,153,0.08)]">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-pulse" />
+                Analysis Verified
+              </div>
+
+              {resolvedResults.some(r => r.quitEarly) && (
+                <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.3em] border border-amber-500/30 text-amber-400 bg-amber-500/5">
+                  ⚠️ Partial Sessions Detected
+                </div>
+              )}
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter leading-none">
@@ -254,13 +288,23 @@ export default function ReportPage() {
               </span>
             </h1>
 
-            <p className="text-white/40 text-base max-w-xl leading-relaxed">
-              Your patterns across{' '}
-              <span className="text-white/60 font-semibold">
-                {resolvedResults.length || 'historical'}
-              </span>{' '}
-              cognitive nodes synthesized into a unique performance dossier.
-            </p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-white/40 text-base max-w-xl leading-relaxed">
+                Your patterns across{' '}
+                <span className="text-white/60 font-semibold tracking-wider">
+                  {resolvedResults.filter(r => !r.quitEarly).length}/5 Complete Nodes
+                </span>{' '}
+                synthesized into a unique performance dossier.
+              </p>
+              
+              {/* Progress Bar */}
+              <div className="w-64 h-1 bg-white/5 rounded-full overflow-hidden mt-2 relative">
+                <div 
+                  className="absolute inset-y-0 left-0 bg-violet-500 transition-all duration-1000"
+                  style={{ width: `${(resolvedResults.length / 5) * 100}%` }}
+                />
+              </div>
+            </div>
           </motion.header>
 
           {/* ═══════════════════════════ CENTRAL DASHBOARD ═══════════════════════ */}

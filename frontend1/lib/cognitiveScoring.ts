@@ -34,8 +34,9 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
       const allRTs = r.reactionTimeMs ?? [];
       const meanRT = avg(allRTs);
       const speedBonus = meanRT > 0 ? clamp(10 - (meanRT / 100), 0, 10) : 0;
-
-      s.attention = clamp((acc * 90) - interferencePenalty + speedBonus);
+      let score = (acc * 90) - interferencePenalty + speedBonus;
+      if (r.quitEarly) score *= 0.6; // 40% penalty for incomplete mission
+      s.attention = clamp(score);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -47,8 +48,9 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
 
       const baseScore = accuracy * 100;
       const faPenalty = faRate * 60;
-
-      s.memory = clamp(baseScore - faPenalty);
+      let score = baseScore - faPenalty;
+      if (r.quitEarly) score *= 0.5; // Memory requires full sequence comparison
+      s.memory = clamp(score);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -58,7 +60,9 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
       const totalNoGo  = (r.rawData?.totalNoGo as number) ?? Math.floor(total * 0.3);
 
       const impRate = totalNoGo > 0 ? (commErrors / totalNoGo) : (errors / total);
-      s.impulsivity = clamp(impRate * 100);
+      let score = 100 - (impRate * 100);
+      if (r.quitEarly) score *= 0.6;
+      s.impulsivity = clamp(score);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -67,7 +71,9 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
       const pes   = (r.rawData?.perseverativeErrors as number) ?? errors;
       const peRate = pes / total;
       const activityBonus = clamp(total * 0.5, 0, 20);
-      s.flexibility = clamp(100 - (peRate * 200) + activityBonus);
+      let score = 100 - (peRate * 200) + activityBonus;
+      if (r.quitEarly) score *= 0.4;
+      s.flexibility = clamp(score);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -78,8 +84,9 @@ export function calculateScores(results: GameResult[]): CognitiveScores {
 
       const pumpScore    = clamp((avgPumps / 18) * 100);
       const popAdjust    = (poppedRatio - 0.3) * 40;
-
-      s.risk_behavior = clamp(pumpScore + popAdjust);
+      let score = pumpScore + popAdjust;
+      if (r.quitEarly) score *= 0.6;
+      s.risk_behavior = clamp(score);
     }
   }
 
@@ -199,51 +206,59 @@ export interface SessionParameter {
 
 export function getScientificMetrics(cognitive: string, result?: GameResult | any): SessionParameter[] {
   if (!result) return [];
-  const rt = avg(result.reactionTimeMs ?? result.reaction_time_ms ?? []);
+  
+  // Robust RT calculation
+  const rtArray = result.reactionTimeMs ?? result.reaction_time_ms ?? [];
+  const rt = rtArray.length ? rtArray.reduce((a: number, b: number) => a + b, 0) / rtArray.length : 0;
   const rtDisplay = rt > 0 ? rt.toFixed(0) : '—';
+  
   const total = result.totalActions || result.total_actions || 1;
   const errors = result.errorCount ?? result.error_count ?? 0;
   const raw = result.rawData || result.raw_data || {};
 
-  // Utility to check multiple keys
+  // Utility to check multiple keys case-insensitively
   const get = (obj: any, keys: string[]) => {
     for (const key of keys) {
       if (obj[key] != null) return obj[key];
+      // Check snake_case variant
+      const snake = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      if (obj[snake] != null) return obj[snake];
     }
     return null;
   };
 
   switch (cognitive) {
     case 'attention': {
-      const conRT = get(raw, ['congruentRT', 'congruent_rt']) ?? 0;
-      const inconRT = get(raw, ['incongruentRT', 'incongruent_rt']) ?? 0;
+      const conRT = get(raw, ['congruentRT']) ?? 0;
+      const inconRT = get(raw, ['incongruentRT']) ?? 0;
       const interference = conRT > 0 && inconRT > 0 ? (inconRT - conRT).toFixed(0) : '—';
-      const accVal = get(raw, ['accuracy', 'acc']);
+      const accVal = get(raw, ['accuracy']);
       const acc = accVal != null ? (accVal * 100).toFixed(1) : (((total - errors) / total) * 100).toFixed(1);
       return [
         { label: 'Reaction Time', value: rtDisplay, unit: 'ms', isHigh: false },
         { label: 'Accuracy', value: acc, unit: '%', isHigh: true },
         { label: 'Error Rate (Incongruent)', value: String(errors), unit: 'trials', isHigh: false },
-        { label: 'Interference Score', value: String(interference), unit: 'ms', isHigh: typeof interference === 'number' && interference > 100, desc: 'RT(incongruent) − RT(congruent)' },
+        { label: 'Interference Score', value: String(interference), unit: 'ms', isHigh: typeof interference === 'number' && Number(interference) > 100, desc: 'RT(incongruent) − RT(congruent)' },
       ];
     }
     case 'memory': {
-      const accVal = get(raw, ['accuracy', 'acc']);
+      const accVal = get(raw, ['accuracy']);
       const acc = accVal != null ? (accVal * 100).toFixed(1) : (((total - errors) / total) * 100).toFixed(1);
-      const hits = get(raw, ['hits', 'correct_hits']) ?? (total - errors);
-      const falsePos = get(raw, ['falsePositives', 'false_positives', 'fa']) ?? errors;
+      const hits = get(raw, ['hits']) ?? (total - errors);
+      const falsePos = get(raw, ['falsePositives', 'fa']) ?? errors;
       const faRate = ((falsePos / total) * 100).toFixed(1);
       return [
         { label: 'Hit Rate', value: acc, unit: '%', isHigh: true, desc: 'Correct matches' },
         { label: 'False Alarm Rate', value: faRate, unit: '%', isHigh: false },
-        { label: 'Miss Rate', value: ((errors / total) * 100).toFixed(1), unit: '%', isHigh: false },
+        { label: 'Miss Rate', value: (((expMatch() - hits) / total) * 100).toFixed(1), unit: '%', isHigh: false },
         { label: 'Reaction Time', value: rtDisplay, unit: 'ms', isHigh: false },
       ];
+
+      function expMatch() { return get(raw, ['expectedMatches']) ?? total; }
     }
     case 'impulsivity': {
-      const commErrors = get(raw, ['commissionErrors', 'commission_errors']) ?? errors;
-      const omErrors = get(raw, ['omissionErrors', 'omission_errors']) ?? 0;
-      const totalNoGo = get(raw, ['totalNoGo', 'total_no_go']) ?? total;
+      const commErrors = get(raw, ['commissionErrors']) ?? errors;
+      const omErrors = get(raw, ['omissionErrors']) ?? 0;
       const errRate = ((errors / total) * 100).toFixed(1);
       return [
         { label: 'Commission Errors', value: String(commErrors), unit: 'trials', isHigh: false, desc: 'Wrong taps on No-Go' },
@@ -253,9 +268,9 @@ export function getScientificMetrics(cognitive: string, result?: GameResult | an
       ];
     }
     case 'flexibility': {
-      const perErrors = get(raw, ['perseverativeErrors', 'perseverative_errors']) ?? errors;
-      const shifts = get(raw, ['ruleShifts', 'rule_shifts']) ?? 0;
-      const shiftRate = ((shifts / total) * 100).toFixed(1);
+      const perErrors = get(raw, ['perseverativeErrors']) ?? errors;
+      const shifts = get(raw, ['ruleShifts']) ?? 0;
+      const shiftRate = ((shifts / (total || 1)) * 100).toFixed(1);
       return [
         { label: 'Perseverative Errors', value: String(perErrors), unit: 'trials', isHigh: false, desc: 'Applying outdated rules' },
         { label: 'Rule Shifts Completed', value: String(shifts), unit: 'shifts', isHigh: true },
@@ -264,11 +279,11 @@ export function getScientificMetrics(cognitive: string, result?: GameResult | an
       ];
     }
     case 'risk_behavior': {
-      const avgPumpsVal = get(raw, ['avgPumps', 'avg_pumps', 'pumps']);
+      const avgPumpsVal = get(raw, ['avgPumps', 'pumps']);
       const avgPumps = avgPumpsVal != null ? Number(avgPumpsVal).toFixed(1) : '—';
-      const popRatioVal = get(raw, ['poppedRatio', 'popped_ratio', 'burst_rate']);
+      const popRatioVal = get(raw, ['poppedRatio', 'burst_rate']);
       const popRatio = popRatioVal != null ? (popRatioVal * 100).toFixed(1) : (((errors) / total) * 100).toFixed(1);
-      const score = get(raw, ['totalScore', 'total_score', 'score']) ?? '—';
+      const score = get(raw, ['totalScore', 'score']) ?? '—';
       return [
         { label: 'Average Pumps', value: String(avgPumps), unit: 'pumps/trial', isHigh: true },
         { label: 'Burst Rate', value: popRatio, unit: '%', isHigh: false, desc: 'Risk execution failure' },
@@ -280,3 +295,4 @@ export function getScientificMetrics(cognitive: string, result?: GameResult | an
       return [];
   }
 }
+

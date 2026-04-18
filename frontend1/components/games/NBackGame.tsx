@@ -132,6 +132,7 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
           falsePositives: falseAlarms.current,
           hits: hits.current,
           expectedMatches: exp,
+          totalSteps: totalSteps.current
         }
       });
     }, 1000);
@@ -155,15 +156,16 @@ export default function NBackGame({ assignment, onComplete, onExit }: Props) {
     const current = seq[idx];
     const past = seq[idx - N];
     const rt = Date.now() - stimulusStartTime.current;
+    
+    // Always log RT for latency tracking
+    reactionTimes.current.push(rt);
 
     if (current === past) {
       hits.current++;
-      reactionTimes.current.push(rt);
       setShowFeedback('correct');
       sounds.playSuccess();
     } else {
       falseAlarms.current++;
-      reactionTimes.current.push(rt);
       setShowFeedback('wrong');
       sounds.playError();
     }

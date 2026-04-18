@@ -16,11 +16,15 @@ function avg(arr: number[]) {
 
 function getGameSpecificMetrics(insight: CognitiveInsight, result?: GameResult): { label: string; value: string }[] {
   if (!result) return [];
-  const rt = avg(result.reactionTimeMs ?? (result as any).reaction_time_ms ?? []);
-  const rtDisplay = rt > 0 ? `${rt}ms` : '—';
-  const total = result.totalActions || (result as any).total_actions || 1;
-  const errors = result.errorCount ?? (result as any).error_count ?? 0;
   const raw = result.rawData || (result as any).raw_data || {};
+  
+  // Fallback for missing reactionTimeMs in some session versions
+  const rtArray = result.reactionTimeMs || (result as any).reaction_time_ms || [];
+  const rt = avg(rtArray);
+  const rtDisplay = rt > 0 ? `${rt.toFixed(0)}ms` : '—';
+
+  const total = Number(result.totalActions || (result as any).total_actions || 1);
+  const errors = Number(result.errorCount ?? (result as any).error_count ?? 0);
 
   // Data extraction helper with multi-key support
   const get = (obj: any, keys: string[]) => {
@@ -32,41 +36,41 @@ function getGameSpecificMetrics(insight: CognitiveInsight, result?: GameResult):
 
   switch (insight.cognitive) {
     case 'attention':
-      const accAtt = get(raw, ['accuracy', 'acc']);
-      const inRTAtt = get(raw, ['incongruentRT', 'incongruent_rt', 'incon_rt']);
-      const confRTAtt = get(raw, ['interferenceScale', 'interference_scale', 'interference']);
+      const accAtt = get(raw, ['accuracy', 'acc', 'att_acc']);
+      const inRTAtt = get(raw, ['incongruentRT', 'incongruent_rt', 'incon_rt', 'mean_rt']);
+      const confRTAtt = get(raw, ['interferenceScale', 'interference_scale', 'interference', 'interference_penalty']);
       return [
         { label: 'Mean LT', value: rtDisplay },
-        { label: 'Att Acc', value: accAtt != null ? `${Math.round(accAtt * 100)}%` : `${Math.round(((total - errors) / total) * 100)}%` },
+        { label: 'Att Acc', value: accAtt != null ? `${Math.round(Number(accAtt) * 100)}%` : `${Math.round(((total - errors) / total) * 100)}%` },
         { label: 'Fails', value: `${errors}` },
-        { label: 'Incongruent RT', value: inRTAtt ? `${Math.round(inRTAtt)}ms` : '—' },
+        { label: 'Incongruent RT', value: inRTAtt ? `${Math.round(Number(inRTAtt))}ms` : '—' },
         { label: 'Interference', value: confRTAtt ? `${Number(confRTAtt).toFixed(1)}x` : '—' },
       ];
     case 'memory':
-      const accMem = get(raw, ['accuracy', 'acc']);
-      const hitsMem = get(raw, ['hits', 'correct_hits']);
-      const faMem = get(raw, ['falsePositives', 'false_positives', 'fa']);
+      const accMem = get(raw, ['accuracy', 'acc', 'mem_acc', 'recall_accuracy']);
+      const hitsMem = get(raw, ['hits', 'correct_hits', 'correct_matches']);
+      const faMem = get(raw, ['falsePositives', 'false_positives', 'fa', 'false_alarms']);
       return [
         { label: 'Mean RT', value: rtDisplay },
-        { label: 'Recall Acc', value: accMem != null ? `${Math.round(accMem * 100)}%` : '—' },
+        { label: 'Recall Acc', value: accMem != null ? `${Math.round(Number(accMem) * 100)}%` : '—' },
         { label: 'Hits', value: hitsMem != null ? `${hitsMem}` : `${total - errors}` },
         { label: 'FA/Errors', value: faMem != null ? `${faMem}` : `${errors}` },
         { label: 'N-Level', value: '2-Back' },
       ];
     case 'impulsivity':
-      const commImp = get(raw, ['commissionErrors', 'commission_errors', 'failed_inhib']);
-      const omImp = get(raw, ['omissionErrors', 'omission_errors', 'missed_go']);
-      const nogoImp = get(raw, ['totalNoGo', 'total_no_go', 'no_go_count']);
+      const commImp = get(raw, ['commissionErrors', 'commission_errors', 'failed_inhib', 'commission']);
+      const omImp = get(raw, ['omissionErrors', 'omission_errors', 'missed_go', 'omission']);
+      const nogoImp = get(raw, ['totalNoGo', 'total_no_go', 'no_go_count', 'total_trials']);
       return [
         { label: 'Mean RT', value: rtDisplay },
         { label: 'Failed Inhib', value: commImp != null ? `${commImp}` : `${errors}` },
         { label: 'Missed Go', value: omImp != null ? `${omImp}` : '—' },
-        { label: 'Total Trials', value: `${total}` },
+        { label: 'Total Trials', value: nogoImp ? `${nogoImp}` : `${total}` },
         { label: 'Control Rate', value: commImp != null && nogoImp ? `${Math.round((1 - commImp / nogoImp) * 100)}%` : '—' },
       ];
     case 'flexibility':
-      const pesFlex = get(raw, ['perseverativeErrors', 'perseverative_errors', 'stickiness']);
-      const shiftFlex = get(raw, ['ruleShifts', 'rule_shifts', 'shifts']);
+      const pesFlex = get(raw, ['perseverativeErrors', 'perseverative_errors', 'stickiness', 'perseverations']);
+      const shiftFlex = get(raw, ['ruleShifts', 'rule_shifts', 'shifts', 'successful_shifts']);
       return [
         { label: 'Mean RT', value: rtDisplay },
         { label: 'Stickiness', value: pesFlex != null ? `${pesFlex}` : `${errors}` },
@@ -74,12 +78,12 @@ function getGameSpecificMetrics(insight: CognitiveInsight, result?: GameResult):
         { label: 'Rule Shifts', value: shiftFlex != null ? `${shiftFlex}` : '—' },
       ];
     case 'risk_behavior':
-      const pumpsBART = get(raw, ['avgPumps', 'avg_pumps', 'pumps']);
-      const popBART = get(raw, ['poppedRatio', 'popped_ratio', 'burst_rate']);
-      const scoreBART = get(raw, ['totalScore', 'total_score', 'score']);
+      const pumpsBART = get(raw, ['avgPumps', 'avg_pumps', 'pumps', 'average_pumps']);
+      const popBART = get(raw, ['poppedRatio', 'popped_ratio', 'burst_rate', 'pop_ratio']);
+      const scoreBART = get(raw, ['totalScore', 'total_score', 'score', 'banked_points']);
       return [
         { label: 'Avg Pumps', value: pumpsBART != null ? Number(pumpsBART).toFixed(1) : '—' },
-        { label: 'Burst Rate', value: popBART != null ? `${Math.round(popBART * 100)}%` : '—' },
+        { label: 'Burst Rate', value: popBART != null ? `${Math.round(Number(popBART) * 100)}%` : '—' },
         { label: 'Total Score', value: scoreBART != null ? `${scoreBART}pts` : '—' },
         { label: 'Successes', value: `${total - errors}` },
       ];

@@ -34,16 +34,19 @@ export function AvatarMessage({ message, emoji, label = 'Therapy Assistant' }: P
         <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
       </div>
 
-      {/* Text */}
-      <div className="flex flex-col gap-1 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-violet-400 font-semibold text-sm">{label}</span>
-          <span className="text-white/30 text-xs">• AI Companion</span>
+      {/* Text Content */}
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-violet-400 font-black text-[10px] uppercase tracking-widest">{label}</span>
+          <span className="text-white/20 text-[9px] font-bold uppercase tracking-widest">• AI Companion</span>
         </div>
-        <p className="text-white/80 text-sm leading-relaxed min-h-[3rem]">
-          {displayed}
-          {!done && <span className="cursor-blink inline-block w-0.5 h-4 bg-violet-400 ml-0.5" />}
-        </p>
+        
+        <div className="relative max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
+          <div className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+            {displayed}
+            {!done && <span className="cursor-blink inline-block w-0.5 h-4 bg-violet-400 ml-0.5 align-middle" />}
+          </div>
+        </div>
       </div>
     </div>
   );

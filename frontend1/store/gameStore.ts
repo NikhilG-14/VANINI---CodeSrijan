@@ -145,15 +145,34 @@ export const useGameStore = create<GameState>()((set, get) => ({
       return;
     }
 
+    // ── DATA TRACE LOGGING ──────────────────────────────────────────
+    console.log(`%c[TELEMETRY] Game Completed: ${activeGame?.gameName}`, 'background: #222; color: #bada55; padding: 2px 4px; border-radius: 2px;');
+    console.log('Result Object:', finalResult);
+    if (finalResult.rawData) {
+      console.log('Raw Insights:');
+      console.table(finalResult.rawData);
+    }
+    // ───────────────────────────────────────────────────────────────
+
     const newResults = [...results, finalResult];
     const newCompleted = new Set(completedZones);
     if (activeZoneId) newCompleted.add(activeZoneId);
+
+    // ── INCREMENTAL PERSISTENCE ──────────────────────────────────────
+    // We save after EVERY game now, as requested.
+    console.log('%c[SESSION] Saving Progress...', 'background: #222; color: #3b82f6;');
+    saveResults(newResults);
+    // ───────────────────────────────────────────────────────────────
+
+    if (finalResult.quitEarly) {
+      console.warn(`%c[WARNING] Early Exit detected for: ${activeGame?.gameName}. Partial telemetry captured.`, 'font-weight: bold; color: #fbbf24;');
+    }
 
     const nextLevel = newCompleted.size;
     const isComplete = newCompleted.size >= 5;
     
     if (isComplete) {
-      saveResults(newResults);
+      console.log('%c[SESSION] ALL 5 ZONES COMPLETE - Finalizing Persistence', 'background: #004400; color: #fff; font-weight: bold; padding: 4px 8px;');
     }
 
     set({

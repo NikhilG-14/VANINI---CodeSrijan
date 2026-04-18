@@ -212,7 +212,8 @@ export default function GoNoGoGame({ assignment, onComplete, onExit }: Props) {
         rawData: {
           commissionErrors: commission,
           omissionErrors: omission,
-          meanRT: Math.round(mean(rts)),
+          meanRT: rts.length ? Math.round(rts.reduce((a, b) => a + b, 0) / rts.length) : 0,
+          totalTrials: records.length,
           accuracy: records.length > 0 ? ((records.filter(r => r.correct).length / records.length) * 100).toFixed(1) : '0',
         },
       });
