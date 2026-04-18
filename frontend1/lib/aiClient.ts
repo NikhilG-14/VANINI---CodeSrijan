@@ -3,18 +3,6 @@ import { useUserStore } from '@/store/userStore';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
-const OLLAMA_BASE = process.env.NEXT_PUBLIC_OLLAMA_BASE || '';
-const OLLAMA_MODEL = process.env.NEXT_PUBLIC_OLLAMA_MODEL || 'llama3';
-
-type SessionResultLite = {
-  gameId?: string;
-  quitEarly?: boolean;
-  reactionTimeMs?: number[];
-  totalActions?: number;
-  errorCount?: number;
-  rawData?: Record<string, unknown>;
-};
-
 export type SessionHistoryEntry = {
   scores?: CognitiveScores;
   results?: GameResult[];
@@ -44,6 +32,43 @@ export type SessionHistoryResponse = {
   count: number;
   sessions: SessionHistoryEntry[];
 };
+
+/**
+ * Helper to call the centralized AI backend proxy (Gemini/Ollama).
+ * This keeps the API keys on the server and ensures connectivity via port 8000.
+ */
+async function callAIProxy(prompt: string, system: string, onToken?: (chunk: string) => void): Promise<string> {
+  const url = `${API_BASE}/ai/generate`;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, system }),
+      // Long timeout for AI generation (Render might be slow)
+      signal: AbortSignal.timeout(45000) 
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`AI Proxy Error (${response.status}): ${errBody}`);
+    }
+
+    const data = await response.json();
+    const result = data.response || "";
+    
+    // Simulate streaming for UI consistency if onToken is provided, 
+    // although the proxy currently returns a full string.
+    if (onToken && result) {
+      onToken(result);
+    }
+    
+    return result;
+  } catch (err) {
+    console.error('[VANI] AI Proxy failure:', err);
+    throw err;
+  }
+}
 
 function buildSystemPrompt(
   scores: CognitiveScores,
@@ -82,14 +107,6 @@ ${historyContext}
 Analyze the data now and output exactly 8 bulleted points analyzing the potential causes and connections to stress, anxiety, or mental fatigue based on their performance.`;
 }
 
-
-type OllamaRequest = {
-  model: string;
-  prompt: string;
-  system: string;
-  stream: boolean;
-};
-
 export async function syncMasterMemoir(
   userId: string,
   currentSummary: string,
@@ -113,31 +130,18 @@ Objective: Create a single, cohesive, evolving narrative of their cognitive jour
 Keep it empathetic and professional. Max 150 words. Use bullet points for key milestones.
 Output ONLY the new consolidated narrative.`;
 
-    const body: OllamaRequest = {
-      model: OLLAMA_MODEL,
-      prompt: mergePrompt,
-      system: "You are VANI, a master of longitudinal cognitive storytelling.",
-      stream: false,
-    };
+    const updatedMemoir = await callAIProxy(
+      mergePrompt, 
+      "You are VANI, a master of longitudinal cognitive storytelling."
+    );
 
-    const ollamaRes = await fetch(`${OLLAMA_BASE}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(15000)
-    });
-
-    if (ollamaRes.ok) {
-      const data = await ollamaRes.json();
-      const updatedMemoir = data.response;
-
+    if (updatedMemoir) {
       // 3. Save back to DB
       await fetch(`${API_BASE}/user/memoir/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, master_summary: updatedMemoir })
       });
-
       return updatedMemoir;
     }
     return oldMemoir || currentSummary;
@@ -154,7 +158,6 @@ export async function generateAvatarResponse(
   history?: UserDossier,
   onToken?: (chunk: string) => void
 ): Promise<string> {
-  // Fetch master memoir to provide context for the response
   const vimid = useUserStore.getState().vimid;
   let masterMemoir = "";
   if (vimid) {
@@ -165,69 +168,13 @@ export async function generateAvatarResponse(
     } catch { }
   }
 
-  const body: OllamaRequest = {
-    model: OLLAMA_MODEL,
-    prompt: userMessage,
-    system: buildSystemPrompt(scores, insights, history) + `\n\nLONG-TERM MEMOIR CONTEXT:\n${masterMemoir}`,
-    stream: !!onToken,
-  };
-
+  const system = buildSystemPrompt(scores, insights, history) + `\n\nLONG-TERM MEMOIR CONTEXT:\n${masterMemoir}`;
+  
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for AI response start
-
-    const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (!res.ok) throw new Error(`Ollama error: ${res.status}`);
-
-    if (onToken && res.body) {
-      // Streaming mode
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = '';
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          // Split by newline and handle multiple JSON objects in one chunk
-          const lines = chunk.split('\n').filter(Boolean);
-          for (const line of lines) {
-            try {
-              const obj = JSON.parse(line);
-              if (obj.response) {
-                onToken(obj.response);
-                full += obj.response;
-              }
-              if (obj.done) break;
-            } catch {
-              // Silently ignore partial JSON segments within the stream
-              continue;
-            }
-          }
-        }
-      } catch (streamErr) {
-        console.error('[VANI] Stream read error:', streamErr);
-      } finally {
-        reader.releaseLock();
-      }
-      return full || (null as unknown as string);
-    } else {
-      // Non-streaming
-      const data = await res.json();
-      return data.response ?? '';
-    }
-    return null as unknown as string;
+    return await callAIProxy(userMessage, system, onToken);
   } catch (err) {
-    console.warn('[VANI] Ollama network failure or unavailable:', err);
-    return null as unknown as string;
+    console.warn('[VANI] AI generator unavailable:', err);
+    return "";
   }
 }
 
@@ -247,55 +194,22 @@ FORMATTING RULES (STRICT):
 
 Diagnostic Statements:`;
 
-  const body: OllamaRequest = {
-    model: OLLAMA_MODEL,
-    prompt: diagnosticPrompt,
-    system: "You are a clinical diagnostic engine providing bulleted neuro-behavioral insights.",
-    stream: !!onToken,
-  };
-
   try {
-    const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) throw new Error(`Ollama error: ${res.status}`);
-
-    if (onToken && res.body) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let full = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(Boolean);
-        for (const line of lines) {
-          try {
-            const obj = JSON.parse(line);
-            if (obj.response) {
-              onToken(obj.response);
-              full += obj.response;
-            }
-          } catch { }
-        }
-      }
-      return full;
-    } else {
-      const data = await res.json();
-      return data.response ?? '';
-    }
+    return await callAIProxy(
+      diagnosticPrompt, 
+      "You are a clinical diagnostic engine providing bulleted neuro-behavioral insights.",
+      onToken
+    );
   } catch (err) {
     console.warn('[VANI] Diagnostic fetch failed:', err);
     return "";
   }
 }
 
-export async function checkOllamaHealth(): Promise<boolean> {
+export async function checkAIHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${OLLAMA_BASE}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    // We check the backend's status rather than Ollama's direct status
+    const res = await fetch(`${API_BASE}/find-match?info=healthcheck`, { signal: AbortSignal.timeout(3000) });
     return res.ok;
   } catch {
     return false;
@@ -425,25 +339,13 @@ Do not use lists. Speak directly to the user as "you". Keep it under 50 words.
 METRIC DELTAS (Positive is improvement, Negative is decline):
 ${JSON.stringify(report.delta, null, 2)}`;
 
-        const body: OllamaRequest = {
-          model: OLLAMA_MODEL,
-          prompt: aiPrompt,
-          system: "You are VANI, a concise, supportive AI behavioral analyst.",
-          stream: false,
-        };
-
-        const ollamaRes = await fetch(`${OLLAMA_BASE}/api/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(10000)
-        });
-
-        if (ollamaRes.ok) {
-          const ollamaData = await ollamaRes.json();
-          if (ollamaData.response) {
-            report.ai_summary = ollamaData.response;
-          }
+        const updatedSummary = await callAIProxy(
+          aiPrompt, 
+          "You are VANI, a concise, supportive AI behavioral analyst."
+        );
+        
+        if (updatedSummary) {
+          report.ai_summary = updatedSummary;
         }
       } catch (ollamaErr) {
         console.warn('[VANI] Failed to dynamically generate AI summary, using fallback:', ollamaErr);

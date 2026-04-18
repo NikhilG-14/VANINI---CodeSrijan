@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { generateAvatarResponse, saveChatMessage, getUserDossier } from '@/lib/ollamaClient';
-import type { UserDossier } from '@/lib/ollamaClient';
+import { generateAvatarResponse, saveChatMessage, getUserDossier } from '@/lib/aiClient';
+import type { UserDossier } from '@/lib/aiClient';
 import type { CognitiveScores, CognitiveInsight } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
 import { motion } from 'framer-motion';

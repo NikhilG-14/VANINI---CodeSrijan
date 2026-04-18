@@ -9,14 +9,14 @@ import { useGameStore } from '@/store/gameStore';
 import { calculateScores, getCognitiveInsights, getAvatarMessage } from '@/lib/cognitiveScoring';
 import {
   generateAvatarResponse,
-  checkOllamaHealth,
+  checkAIHealth,
   saveGameSession,
   getSessionReport,
   getSessionHistory,
   generateGameDiagnostic,
   syncMasterMemoir,
   type SessionReport,
-} from '@/lib/ollamaClient';
+} from '@/lib/aiClient';
 import { loadResults } from '@/lib/gameSession';
 import type { CognitiveInsight, CognitiveScores } from '@/lib/types';
 import { useUserStore } from '@/store/userStore';
@@ -43,7 +43,7 @@ export default function ReportPage() {
 
   const [insights, setInsights] = useState<CognitiveInsight[]>([]);
   const [avatarMsg, setAvatarMsg] = useState('');
-  const [ollamaOnline, setOllamaOnline] = useState(false);
+  const [aiOnline, setAIOnline] = useState(false);
   const [computed, setComputed] = useState<CognitiveScores | null>(null);
   const [reportData, setReportData] = useState<SessionReport | null>(null);
   const [resolvedResults, setResolvedResults] = useState(results);
@@ -69,7 +69,7 @@ export default function ReportPage() {
         setDiagnosticText(streamed);
       });
     } catch {
-      setDiagnosticText('Unable to generate diagnostic. Please ensure Ollama is active.');
+      setDiagnosticText('Unable to generate diagnostic. Please ensure AI services are active.');
     } finally {
       setDiagnosticLoading(false);
     }
@@ -152,8 +152,8 @@ export default function ReportPage() {
     const insightsData = getCognitiveInsights(computed);
     const fallback = getAvatarMessage(computed);
 
-    checkOllamaHealth().then(online => {
-      setOllamaOnline(online);
+    checkAIHealth().then(online => {
+      setAIOnline(online);
       if (!online) { setAvatarMsg(fallback); return; }
       const partialCount = resolvedResults.filter(r => r.quitEarly).length;
       const partialGames = resolvedResults.filter(r => r.quitEarly).map(r => r.gameId).join(', ');
@@ -336,7 +336,7 @@ export default function ReportPage() {
                   <span className="text-[9px] font-black text-white/35 uppercase tracking-widest whitespace-nowrap">
                     Assistant Assessment
                   </span>
-                  {ollamaOnline ? (
+                  {aiOnline ? (
                     <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-black tracking-widest uppercase whitespace-nowrap">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Deep Logic Sync

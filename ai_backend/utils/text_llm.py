@@ -115,6 +115,26 @@ def create_poem(user_input):
         print(f"Gemini poem generation failed: {e}")
         return "Error generating poem."
 
+async def generate_ai_response(prompt: str, system_prompt: str = None):
+    """Unified AI response generator (Ollama or Gemini)."""
+    if USE_OLLAMA:
+        result = call_ollama(prompt, system_prompt)
+        if result:
+            return result
+            
+    # Fallback to Gemini
+    try:
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # Combine system prompt if provided
+        full_prompt = f"System: {system_prompt}\n\nUser: {prompt}" if system_prompt else prompt
+        response = await model.generate_content_async(full_prompt)
+        return response.text
+    except Exception as e:
+        print(f"Gemini generation error: {e}")
+        return None
+
 def text_to_image(user_input):
     """Placeholder for image generation logic."""
     pass

@@ -42,10 +42,9 @@ pre_commit==4.0.1
 proto-plus==1.25.0
 protobuf==5.28.3
 pyaes==1.6.1
-pyasn1==0.6.1
-pyasn1_modules==0.4.1
-pydantic==2.9.2
-pydantic_core==2.23.4
+pyasn1
+pyasn1_modules
+pydantic
 Pygments==2.18.0
 pymongo==4.10.1
 pyparsing==3.2.0

@@ -28,6 +28,7 @@ from ai_backend.utils.text_llm import (create_poem, decompose_user_text,
                                     expand_user_text_using_gemini,
                                     expand_user_text_using_gemma,
                                     expand_user_text_with_priority,
+                                    generate_ai_response,
                                     text_to_image)
 from ai_backend.utils.twitter import send_message_to_twitter
 
@@ -84,13 +85,11 @@ async def get_post_and_expand_its_content(post_info: PostInfo):
             f"Culprit Description: {post_info.culprit_description}\n"
             f"Custom Text: {post_info.custom_text}\n"
         )
-        llama_response = await expand_user_text_with_priority(concatenated_text)
-        gemini_response = await expand_user_text_using_gemini(concatenated_text)
-        gemma_response = await expand_user_text_using_gemma(concatenated_text)
+        ai_response = await expand_user_text_with_priority(concatenated_text)
         return {
-            "llama_response": llama_response,
-            "gemini_response": gemini_response, 
-            "gemma_response": gemma_response
+            "ai_response": ai_response,
+            "gemini_response": await expand_user_text_using_gemini(concatenated_text), 
+            "gemma_response": await expand_user_text_using_gemma(concatenated_text)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error expanding text: {e}")
@@ -531,4 +530,20 @@ async def trigger_migration_endpoint():
         return {"status": "error", "message": "Migration failed or unnecessary (check logs)"}
     except Exception as e:
         logger.error(f"Error triggering migration: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ai/generate")
+async def ai_generate_proxy(data: dict):
+    """Secure proxy for frontend AI analysis using Gemini/Ollama."""
+    try:
+        prompt = data.get("prompt")
+        system = data.get("system")
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt is required")
+            
+        # generate_ai_response handles the USE_OLLAMA toggle internally
+        response_text = await generate_ai_response(prompt, system)
+        return {"response": response_text}
+    except Exception as e:
+        logger.error(f"Error in /ai/generate proxy: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { getSessionHistory } from '@/lib/ollamaClient';
+import { getSessionHistory } from '@/lib/aiClient';
 import { useUserStore } from '@/store/userStore';
 
 type ActionEntry = Record<string, unknown>;
