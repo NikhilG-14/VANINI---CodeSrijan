@@ -162,6 +162,7 @@ export default function ReportPage() {
           : ''
         }`;
 
+      let streamed = '';
       generateAvatarResponse(
         prompt,
         computed, insightsData, undefined,
